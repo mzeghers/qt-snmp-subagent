@@ -2,6 +2,7 @@
 #include <QCommandLineParser>
 #include <QCommandLineOption>
 #include <signal.h>
+#include "../QSNMP/QSNMP.h"
 
 
 
@@ -42,20 +43,20 @@ int main(int argc, char * argv[])
     QCommandLineParser parser;
     parser.setApplicationDescription(QString("%1 -- Tests the QSNMP interface.").arg(QCoreApplication::applicationName()));
     parser.addHelpOption();
-    QCommandLineOption agentNameOption(QStringList() << "n", "Sets the SNMP sub-agent name.", "name");
+    QCommandLineOption agentNameOption(QStringList() << "n", "Sets the SNMP sub-agent name.", "name", "example");
     parser.addOption(agentNameOption);
     QCommandLineOption agentAddrOption(QStringList() << "x", "Sets the SNMP AgentX socket address, see snmpd manual.", "agentxsocket");
     parser.addOption(agentAddrOption);
     parser.process(app);
 
     /* Initialize SNMP agent */
-    // TODO
+    QSNMPAgent * snmpAgent = new QSNMPAgent(parser.value(agentNameOption), parser.value(agentAddrOption));
 
     /* Execute application event loop */
     int rc = app.exec();
 
     /* Delete SNMP agent */
-    // TODO
+    delete snmpAgent;
 
     /* Exit */
     return rc;

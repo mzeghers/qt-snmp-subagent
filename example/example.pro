@@ -8,4 +8,8 @@ LIBS += -lnetsnmp -lnetsnmpagent
 
 # Source files
 SOURCES += \
+    ../QSNMP/QSNMP.cpp \
     example.cpp
+
+HEADERS += \
+    ../QSNMP/QSNMP.h
