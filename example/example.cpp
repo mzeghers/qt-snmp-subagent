@@ -50,7 +50,9 @@ int main(int argc, char * argv[])
     parser.process(app);
 
     /* Initialize SNMP agent */
-    QSNMPAgent * snmpAgent = new QSNMPAgent(parser.value(agentNameOption), parser.value(agentAddrOption));
+    QString agentName = parser.value(agentNameOption);
+    QString agentAddr = parser.value(agentAddrOption);
+    QSNMPAgent * snmpAgent = new QSNMPAgent(agentName, agentAddr);
 
     /* Execute application event loop */
     int rc = app.exec();

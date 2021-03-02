@@ -161,7 +161,7 @@ public:
                                 QSNMPVar(QSNMPObject * object, const QString & name, QSNMPType_e type, QSNMPMaxAccess_e maxAccess,
                                              const QSNMPOid & baseOid, quint32 fieldId, const QSNMPOid & indexes = scalarOidIndex);
 
-    /* Constants */
+    /* Getters */
     QSNMPObject *               object() const;
     const QString &             name() const;
     QSNMPType_e                 type() const;
