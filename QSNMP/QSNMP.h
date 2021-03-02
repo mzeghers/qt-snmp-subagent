@@ -75,7 +75,7 @@ class QSNMPAgent : public QObject
 
 public:
                                 QSNMPAgent(const QString & agentName, const QString & agentAddr = QString());
-                                ~QSNMPAgent();
+    virtual                     ~QSNMPAgent();
 
     /* Variables managed under this agent */
     const QSNMPVarMap &         varMap() const;
@@ -117,7 +117,7 @@ class QSNMPObject
 
 public:
                                 QSNMPObject(QSNMPAgent * snmpAgent, const QString & snmpName);
-                                ~QSNMPObject();
+    virtual                     ~QSNMPObject();
 
     /* Getters */
     QSNMPAgent *                snmpAgent() const;
@@ -163,6 +163,7 @@ class QSNMPVar
 public:
                                 QSNMPVar(QSNMPObject * object, const QString & name, QSNMPType_e type, QSNMPMaxAccess_e maxAccess,
                                              const QSNMPOid & baseOid, quint32 fieldId, const QSNMPOid & indexes = scalarOidIndex);
+    virtual                     ~QSNMPVar();
 
     /* Getters */
     QSNMPObject *               object() const;

@@ -700,6 +700,12 @@ QSNMPVar::QSNMPVar(QSNMPObject * object, const QString & name, QSNMPType_e type,
     mRegistration = NULL;
 }
 
+/* Destructor for an SNMP variable. */
+QSNMPVar::~QSNMPVar()
+{
+    /* Nothing to do */
+}
+
 /* Returns the parent SNMP object. */
 QSNMPObject * QSNMPVar::object() const
 {

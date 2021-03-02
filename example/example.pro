@@ -9,7 +9,9 @@ LIBS += -lnetsnmp -lnetsnmpagent
 # Source files
 SOURCES += \
     ../QSNMP/QSNMP.cpp \
-    example.cpp
+    MyModule.cpp \
+    main.cpp
 
 HEADERS += \
-    ../QSNMP/QSNMP.h
+    ../QSNMP/QSNMP.h \
+    MyModule.h

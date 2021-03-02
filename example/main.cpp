@@ -3,6 +3,7 @@
 #include <QCommandLineOption>
 #include <signal.h>
 #include "../QSNMP/QSNMP.h"
+#include "MyModule.h"
 
 
 
@@ -54,8 +55,15 @@ int main(int argc, char * argv[])
     QString agentAddr = parser.value(agentAddrOption);
     QSNMPAgent * snmpAgent = new QSNMPAgent(agentName, agentAddr);
 
+    /* Create my MIB module, which will instantiate SNMP variables */
+    MyModule * myModule = new MyModule(snmpAgent);
+
     /* Execute application event loop */
     int rc = app.exec();
+
+    /* Delete my MIB module: this will also automatically unregister SNMP variables that
+     * where instantiated within myModule */
+    delete myModule;
 
     /* Delete SNMP agent */
     delete snmpAgent;
