@@ -1,7 +1,7 @@
 #include "MyModule.h"
 
-/* Constructs a MyModule object, it is also a SNMP object (=collection) */
-MyModule::MyModule(QSNMPAgent * snmpAgent) : QSNMPObject(snmpAgent, "mymodule")
+/* Constructs a MyModule object, it implements a QSNMP Module */
+MyModule::MyModule(QSNMPAgent * snmpAgent) : QSNMPModule(snmpAgent, "mymodule")
 {
     /* Store SNMP agent */
     mSnmpAgent = snmpAgent;

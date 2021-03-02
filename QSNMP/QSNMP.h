@@ -50,13 +50,13 @@ Q_DECLARE_METATYPE(QSNMPMaxAccess_e)
 /* SNMP OID stored as QVector */
 typedef QVector<quint32> QSNMPOid;
 QString toString(const QSNMPOid & oid);
-static const QSNMPOid scalarOidIndex = QSNMPOid() << 0; // Scalar variable OID (.0), as opposed to tabular variable
+static const QSNMPOid qsnmpScalarIndex = QSNMPOid() << 0; // Scalar variable OID index (.0), as opposed to tabular variable
 
 /* SNMP agent forward declaration */
 class QSNMPAgent;
 
-/* SNMP object forward declaration */
-class QSNMPObject;
+/* SNMP module forward declaration */
+class QSNMPModule;
 
 /* SNMP variable forward declaration */
 class QSNMPVar;
@@ -108,40 +108,32 @@ private slots:
 
 
 /*****************************************************/
-/******************** SNMP OBJECT ********************/
+/******************** SNMP MODULE ********************/
 /*****************************************************/
 
-/* QSNMPObject class definition */
-class QSNMPObject
+/* QSNMPModule class definition */
+class QSNMPModule
 {
 
 public:
-                                QSNMPObject(QSNMPAgent * snmpAgent, const QString & snmpName);
-    virtual                     ~QSNMPObject();
+                                QSNMPModule(QSNMPAgent * snmpAgent, const QString & snmpName);
+    virtual                     ~QSNMPModule();
 
     /* Getters */
     QSNMPAgent *                snmpAgent() const;
     const QString &             snmpName() const;
     const QSNMPVarList &        snmpVarList() const;
-    QSNMPVar *                  snmpVar(const QString & name) const;
-    QSNMPVar *                  snmpVar(quint32 fieldId) const;
 
-    /* Get/Set a variable's value, implemented in the subclass */
+    /* Get/Set a variable's value, implemented in the user-derived class */
     virtual QVariant            snmpGet(const QSNMPVar * var) = 0;
     virtual bool                snmpSet(const QSNMPVar * var, const QVariant & v) = 0;
 
 protected:
-    /* Add/Remove variables to/from this object */
-    QSNMPVar *                  snmpAddNotifyVar(const QString & name, QSNMPType_e type,
-                                                 const QSNMPOid & baseOid, quint32 fieldId, const QSNMPOid & indexes = scalarOidIndex);
-    QSNMPVar *                  snmpAddReadOnlyVar(const QString & name, QSNMPType_e type,
-                                                   const QSNMPOid & baseOid, quint32 fieldId, const QSNMPOid & indexes = scalarOidIndex);
-    QSNMPVar *                  snmpAddReadWriteVar(const QString & name, QSNMPType_e type,
-                                                    const QSNMPOid & baseOid, quint32 fieldId, const QSNMPOid & indexes = scalarOidIndex);
-    void                        snmpRemoveVar(QSNMPVar * var);
-    void                        snmpRemoveVar(const QString & name);
-    void                        snmpRemoveVar(quint32 fieldId);
-    void                        snmpRemoveAllVars();
+    /* Add/Remove variables to/from this module */
+    QSNMPVar *                  snmpCreateVar(const QString & name, QSNMPType_e type, QSNMPMaxAccess_e maxAccess,
+                                              const QSNMPOid & groupOid, quint32 fieldId, const QSNMPOid & indexes = qsnmpScalarIndex);
+    bool                        snmpDeleteVar(QSNMPVar * var);
+    void                        snmpDeleteAllVars();
 
 private:
     QSNMPAgent *                mSnmpAgent;
@@ -161,16 +153,16 @@ class QSNMPVar
 {
 
 public:
-                                QSNMPVar(QSNMPObject * object, const QString & name, QSNMPType_e type, QSNMPMaxAccess_e maxAccess,
-                                             const QSNMPOid & baseOid, quint32 fieldId, const QSNMPOid & indexes = scalarOidIndex);
+                                QSNMPVar(QSNMPModule * module, const QString & name, QSNMPType_e type, QSNMPMaxAccess_e maxAccess,
+                                             const QSNMPOid & groupOid, quint32 fieldId, const QSNMPOid & indexes = qsnmpScalarIndex);
     virtual                     ~QSNMPVar();
 
     /* Getters */
-    QSNMPObject *               object() const;
+    QSNMPModule *               module() const;
     const QString &             name() const;
     QSNMPType_e                 type() const;
     QSNMPMaxAccess_e            maxAccess() const;
-    const QSNMPOid &            baseOid() const;
+    const QSNMPOid &            groupOid() const;
     quint32                     fieldId() const;
     const QSNMPOid &            indexes() const;
     const QSNMPOid &            oid() const;
@@ -187,11 +179,11 @@ public:
 
 private:
     /* Constants */
-    QSNMPObject *               mObject;
+    QSNMPModule *               mModule;
     QString                     mName;
     QSNMPType_e                 mType;
     QSNMPMaxAccess_e            mMaxAccess;
-    QSNMPOid                    mBaseOid;
+    QSNMPOid                    mGroupOid;
     quint32                     mFieldId;
     QSNMPOid                    mIndexes;
     QSNMPOid                    mOid;

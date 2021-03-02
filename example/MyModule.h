@@ -6,14 +6,14 @@
 
 
 /* MyModule class definition: an example MIB module */
-class MyModule : public QObject, public QSNMPObject
+class MyModule : public QObject, public QSNMPModule
 { Q_OBJECT
 
 public:
                                 MyModule(QSNMPAgent * snmpAgent);
     virtual                     ~MyModule();
 
-    /* SNMP get/set variable implementation */
+    /* SNMP module get/set variable value implementation */
     virtual QVariant            snmpGet(const QSNMPVar * var);
     virtual bool                snmpSet(const QSNMPVar * var, const QVariant & v);
 

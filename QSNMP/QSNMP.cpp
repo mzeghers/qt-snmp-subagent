@@ -113,7 +113,7 @@ static int variableHandler(netsnmp_mib_handler * handler, netsnmp_handler_regist
         {
             /* Get the corresponding variable from agent */
             QSNMPOid qtOid = convertOidSnmpToQt(netsnmp_varlist->name, netsnmp_varlist->name_length);
-            QSNMPVar * var = agent->varMap().value(toString(qtOid), NULL);
+            QSNMPVar * var = agent->varMap().value(toString(qtOid), nullptr);
             if(!var)
                 return SNMP_ERR_GENERR;
 
@@ -213,7 +213,7 @@ static int variableHandler(netsnmp_mib_handler * handler, netsnmp_handler_regist
 
         /* Get the corresponding variable from agent */
         QSNMPOid qtOid = convertOidSnmpToQt(netsnmp_varlist->name, netsnmp_varlist->name_length);
-        QSNMPVar * var = agent->varMap().value(toString(qtOid), NULL);
+        QSNMPVar * var = agent->varMap().value(toString(qtOid), nullptr);
         if(!var)
             return SNMP_ERR_GENERR;
 
@@ -333,7 +333,7 @@ static int variableHandler(netsnmp_mib_handler * handler, netsnmp_handler_regist
 /******************** SNMP AGENT ********************/
 /****************************************************/
 
-/* SNMP agent constructor, initialize Net-SNMP library as AgentX sub-agent */
+/* SNMP agent constructor, initializes Net-SNMP library as AgentX sub-agent. */
 QSNMPAgent::QSNMPAgent(const QString & agentName, const QString & agentAddr)
 {
     /* Initialize member variables */
@@ -353,24 +353,24 @@ QSNMPAgent::QSNMPAgent(const QString & agentName, const QString & agentAddr)
     QTimer::singleShot(0, this, SLOT(processEvents()));
 }
 
-/* SNMP agent destructor, shutdown Net-SNMP library */
+/* SNMP agent destructor, shutdowns Net-SNMP library. */
 QSNMPAgent::~QSNMPAgent()
 {
     snmp_shutdown(mAgentName.toStdString().c_str());
     shutdown_agent();
 }
 
-/* Returns the list of SNMP variables managed under this agent */
+/* Returns the map of SNMP variables managed by this agent. */
 const QSNMPVarMap & QSNMPAgent::varMap() const
 {
     return mVarMap;
 }
 
-/* Register a SNMP variable to this agent.
+/* Registers a SNMP variable to this agent.
  * Returns an empty string on success, else a non-empty string (indicating the
  * failure reason) on error.
- * This function is called by the QSNMPObject variable registration helper functions and
- * should typically not be called directly by the user. */
+ * This function is called by the QSNMPModule snmpCreateVar function and
+ * should typically not be called directly by the user application. */
 QString QSNMPAgent::registerVar(QSNMPVar * var)
 {
     /* Notify variables are not actually registered within the agent */
@@ -382,7 +382,7 @@ QString QSNMPAgent::registerVar(QSNMPVar * var)
         return QString("Variable is already registered");
 
     /* Create handler registration */
-    var->setRegistration(NULL);
+    var->setRegistration(nullptr);
     QVector<oid> oidVector;
     foreach(quint32 k, var->oid())
         oidVector << k;
@@ -410,15 +410,15 @@ QString QSNMPAgent::registerVar(QSNMPVar * var)
         return QString("Duplicate registration aborted");
     }
 
-    /* Add to list */
+    /* Add to map */
     var->setRegistration(reginfo);
     mVarMap.insert(var->oidString(), var);
     return QString();
 }
 
-/* Unregister a SNMP variable from this agent.
- * This function is called by the SNMPObject variable registration helper functions and
- * should typically not be called directly by the user. */
+/* Unregisters a SNMP variable from this agent.
+ * This function is called by the QSNMPModule snmpDeleteVar function and
+ * should typically not be called directly by the user application. */
 void QSNMPAgent::unregisterVar(QSNMPVar * var)
 {
     /* Notify variables are not actually registered within the agent */
@@ -428,14 +428,14 @@ void QSNMPAgent::unregisterVar(QSNMPVar * var)
     /* Unregister */
     if(mVarMap.contains(var->oidString()))
     {
-        /* Unregister variable and release memory */
+        /* Unregister variable and remove from map */
         netsnmp_unregister_handler((netsnmp_handler_registration *)var->registration());
-        var->setRegistration(NULL);
+        var->setRegistration(nullptr);
         mVarMap.remove(var->oidString());
     }
 }
 
-/* Returns true if SNMP traps are enabled */
+/* Returns true if SNMP traps are enabled. */
 bool QSNMPAgent::trapsEnabled() const
 {
     return mTrapsEnabled;
@@ -447,7 +447,7 @@ void QSNMPAgent::setTrapsEnabled(bool enabled)
     mTrapsEnabled = enabled;
 }
 
-/* Process events received by the Net-SNMP library regularly */
+/* Processes events received by the Net-SNMP library regularly. */
 void QSNMPAgent::processEvents()
 {
     /* Process incoming SNMP packets until no more packet is available.
@@ -469,188 +469,92 @@ void QSNMPAgent::processEvents()
 
 
 /*****************************************************/
-/******************** SNMP OBJECT ********************/
+/******************** SNMP MODULE ********************/
 /*****************************************************/
 
-/* Constructor for an SNMP object. Not an actual scalar/tabular item,
- * but a collection of variables, or group, in the MIB syntax.
+/* Constructor for a SNMP module.
+ * Here, a SNMP module is not strictly related to the MIB, but can be seen as
+ * a collection of variables, or group, in the MIB syntax. It can represent a
+ * group of scalars, or a table entry (group of tabulars), or a combination of
+ * both, as required by the user application.
  * The 'snmpName' argument can be any as desired by the user application, it is not
  * related to the MIB. */
-QSNMPObject::QSNMPObject(QSNMPAgent * snmpAgent, const QString & snmpName)
+QSNMPModule::QSNMPModule(QSNMPAgent * snmpAgent, const QString & snmpName)
 {
     mSnmpAgent = snmpAgent;
     mSnmpName = snmpName;
     mSnmpVarList.clear();
 }
 
-/* Destructor for an SNMP object. Unregisters and frees all associated SNMP variables. */
-QSNMPObject::~QSNMPObject()
+/* Destructor for a SNMP module. Unregisters and deletes all SNMP variables. */
+QSNMPModule::~QSNMPModule()
 {
-    this->snmpRemoveAllVars();
+    this->snmpDeleteAllVars();
 }
 
-/* Returns the parent SNMP agent */
-QSNMPAgent * QSNMPObject::snmpAgent() const
+/* Returns the linked SNMP agent. */
+QSNMPAgent * QSNMPModule::snmpAgent() const
 {
     return mSnmpAgent;
 }
 
-/* Returns the name of this object */
-const QString & QSNMPObject::snmpName() const
+/* Returns the name of this module. */
+const QString & QSNMPModule::snmpName() const
 {
     return mSnmpName;
 }
 
-/* Returns the list of SNMP variables allocated under this object */
-const QSNMPVarList & QSNMPObject::snmpVarList() const
+/* Returns the list of SNMP variables allocated in this module. */
+const QSNMPVarList & QSNMPModule::snmpVarList() const
 {
     return mSnmpVarList;
 }
 
-/* Returns the SNMP variable (allocated under this object) with given name */
-QSNMPVar * QSNMPObject::snmpVar(const QString & name) const
-{
-    foreach(QSNMPVar * var, mSnmpVarList)
-    {
-        if(var->name() == name)
-            return var;
-    }
-    return NULL;
-}
-
-/* Returns the SNMP variable (allocated under this object) with given field identifier */
-QSNMPVar * QSNMPObject::snmpVar(quint32 fieldId) const
-{
-    foreach(QSNMPVar * var, mSnmpVarList)
-    {
-        if(var->fieldId() == fieldId)
-            return var;
-    }
-    return NULL;
-}
-
-/* Allocates a "Notification" variable under this object and registers it with the agent.
+/* Creates a SNMP variable under this module and registers it with the agent.
  * The 'name' argument can be any as desired by the user application, but it is recommended
  * to use the same one as inside the MIB file to ease log parsing.
- * The 'baseoid' is the OID of the parent group, 'fieldId' is the variable's identifier
- * under the parent group, and 'indexes' can either be scalarOidIndex (.0) for scalar
+ * The 'type' and 'maxAccess' arguments determine the data type and R/W permissions.
+ * The 'groupOid' is the OID of the parent group, 'fieldId' is the variable's identifier
+ * under the parent group, and 'indexes' can either be qsnmpScalarIndex (.0) for scalar
  * variables or a list of values for tabular variables.
- * The complete variable OID is thus 'baseOid.fieldId.indexes'.
- * Returns the newly allocated variable. */
-QSNMPVar * QSNMPObject::snmpAddNotifyVar(const QString & name, QSNMPType_e type,
-                                         const QSNMPOid & baseOid, quint32 fieldId, const QSNMPOid & indexes)
+ * The complete variable OID is thus 'groupOid.fieldId.indexes'.
+ * Returns the newly allocated variable, or nullptr on failure. */
+QSNMPVar * QSNMPModule::snmpCreateVar(const QString & name, QSNMPType_e type, QSNMPMaxAccess_e maxAccess,
+                                         const QSNMPOid & groupOid, quint32 fieldId, const QSNMPOid & indexes)
 {
-    QSNMPVar * var = new QSNMPVar(this, name, type, QSNMPMaxAccess_Notify, baseOid, fieldId, indexes);
+    QSNMPVar * var = new QSNMPVar(this, name, type, maxAccess, groupOid, fieldId, indexes);
     QString errStr = mSnmpAgent->registerVar(var);
     if(!errStr.isEmpty())
     {
         delete var;
-        return NULL;
+        return nullptr;
     }
     mSnmpVarList << var;
     return var;
 }
 
-/* Allocates a "Read-only" variable under this object and registers it with the agent.
- * The 'name' argument can be any as desired by the user application, but it is recommended
- * to use the same one as inside the MIB file to ease log parsing.
- * The 'baseoid' is the OID of the parent group, 'fieldId' is the variable's identifier
- * under the parent group, and 'indexes' can either be scalarOidIndex (.0) for scalar
- * variables or a list of values for tabular variables.
- * The complete variable OID is thus 'baseOid.fieldId.indexes'.
- * Returns the newly allocated variable. */
-QSNMPVar * QSNMPObject::snmpAddReadOnlyVar(const QString & name, QSNMPType_e type,
-                                           const QSNMPOid & baseOid, quint32 fieldId, const QSNMPOid & indexes)
-{
-    QSNMPVar * var = new QSNMPVar(this, name, type, QSNMPMaxAccess_ReadOnly, baseOid, fieldId, indexes);
-    QString errStr = mSnmpAgent->registerVar(var);
-    if(!errStr.isEmpty())
-    {
-        delete var;
-        return NULL;
-    }
-    mSnmpVarList << var;
-    return var;
-}
-
-/* Allocates a "Read-write" variable under this object and registers it with the agent.
- * The 'name' argument can be any as desired by the user application, but it is recommended
- * to use the same one as inside the MIB file to ease log parsing.
- * The 'baseoid' is the OID of the parent group, 'fieldId' is the variable's identifier
- * under the parent group, and 'indexes' can either be scalarOidIndex (.0) for scalar
- * variables or a list of values for tabular variables.
- * The complete variable OID is thus 'baseOid.fieldId.indexes'.
- * Returns the newly allocated variable. */
-QSNMPVar * QSNMPObject::snmpAddReadWriteVar(const QString & name, QSNMPType_e type,
-                                            const QSNMPOid & baseOid, quint32 fieldId, const QSNMPOid & indexes)
-{
-    QSNMPVar * var = new QSNMPVar(this, name, type, QSNMPMaxAccess_ReadWrite, baseOid, fieldId, indexes);
-    QString errStr = mSnmpAgent->registerVar(var);
-    if(!errStr.isEmpty())
-    {
-        delete var;
-        return NULL;
-    }
-    mSnmpVarList << var;
-    return var;
-}
-
-/* Unregisters a variable (allocated under this object) from the agent, and frees it. */
-void QSNMPObject::snmpRemoveVar(QSNMPVar * var)
+/* Unregisters a variable (that was allocated in this module) from the agent, and frees it.
+ * Returns true on success. */
+bool QSNMPModule::snmpDeleteVar(QSNMPVar * var)
 {
     QSNMPVarList::iterator it = mSnmpVarList.begin();
     while(it != mSnmpVarList.end())
     {
-        QSNMPVar * var2 = *it;
-        if(var2 == var)
+        if(*it == var)
         {
-            it = mSnmpVarList.erase(it);
-            mSnmpAgent->unregisterVar(var2);
-            delete var2;
-        }
-        else
-            it++;
-    }
-}
-
-/* Unregisters a variable (allocated under this object) from the agent, and frees it. */
-void QSNMPObject::snmpRemoveVar(const QString & name)
-{
-    QSNMPVarList::iterator it = mSnmpVarList.begin();
-    while(it != mSnmpVarList.end())
-    {
-        QSNMPVar * var = *it;
-        if(var->name() == name)
-        {
-            it = mSnmpVarList.erase(it);
+            mSnmpVarList.erase(it);
             mSnmpAgent->unregisterVar(var);
             delete var;
+            return true;
         }
         else
             it++;
     }
+    return false;
 }
 
-/* Unregisters a variable (allocated under this object) from the agent, and frees it. */
-void QSNMPObject::snmpRemoveVar(quint32 fieldId)
-{
-    QSNMPVarList::iterator it = mSnmpVarList.begin();
-    while(it != mSnmpVarList.end())
-    {
-        QSNMPVar * var = *it;
-        if(var->fieldId() == fieldId)
-        {
-            it = mSnmpVarList.erase(it);
-            mSnmpAgent->unregisterVar(var);
-            delete var;
-        }
-        else
-            it++;
-    }
-}
-
-/* Unregisters all variables (allocated under this object)from the agent, and frees them */
-void QSNMPObject::snmpRemoveAllVars()
+/* Unregisters all variables (that were allocated in this module) from the agent, and frees them. */
+void QSNMPModule::snmpDeleteAllVars()
 {
     while(!mSnmpVarList.isEmpty())
     {
@@ -668,26 +572,27 @@ void QSNMPObject::snmpRemoveAllVars()
 
 /* Constructor for an SNMP variable. A variable can be either a scalar or tabular item,
  * based on 'indexes', and corresponds to an OBJECT-TYPE in the MIB syntax.
- * Variables are created via QSNMPObject variable registration helper functions and
- * should typically not be created directly by the user.
+ * Variables are created via QSNMPModule snmpCreateVar function and
+ * should typically not be created directly by the user application.
  * The 'name' argument can be any as desired by the user application, but it is recommended
  * to use the same one as inside the MIB file to ease log parsing.
- * The 'baseoid' is the OID of the parent group, 'fieldId' is the variable's identifier
- * under the parent group, and 'indexes' can either be scalarOidIndex (.0) for scalar
+ * The 'type' and 'maxAccess' arguments determine the data type and R/W permissions.
+ * The 'groupOid' is the OID of the parent group, 'fieldId' is the variable's identifier
+ * under the parent group, and 'indexes' can either be qsnmpScalarIndex (.0) for scalar
  * variables or a list of values for tabular variables.
- * The complete variable OID is thus 'baseOid.fieldId.indexes'. */
-QSNMPVar::QSNMPVar(QSNMPObject * object, const QString & name, QSNMPType_e type, QSNMPMaxAccess_e maxAccess,
-                           const QSNMPOid & baseOid, quint32 fieldId, const QSNMPOid & indexes)
+ * The complete variable OID is thus 'groupOid.fieldId.indexes'. */
+QSNMPVar::QSNMPVar(QSNMPModule * module, const QString & name, QSNMPType_e type, QSNMPMaxAccess_e maxAccess,
+                           const QSNMPOid & groupOid, quint32 fieldId, const QSNMPOid & indexes)
 {
     /* Constants */
-    mObject = object;
+    mModule = module;
     mName = name;
     mType = type;
     mMaxAccess = maxAccess;
-    mBaseOid = baseOid;
+    mGroupOid = groupOid;
     mFieldId = fieldId;
     mIndexes = indexes;
-    mOid << mBaseOid << mFieldId << mIndexes;
+    mOid << mGroupOid << mFieldId << mIndexes;
     mOidString = toString(mOid);
 
     /* Descriptive string */
@@ -697,7 +602,7 @@ QSNMPVar::QSNMPVar(QSNMPObject * object, const QString & name, QSNMPType_e type,
                                             .arg(toString(mType));
 
     /* Registration (opaque) */
-    mRegistration = NULL;
+    mRegistration = nullptr;
 }
 
 /* Destructor for an SNMP variable. */
@@ -706,10 +611,10 @@ QSNMPVar::~QSNMPVar()
     /* Nothing to do */
 }
 
-/* Returns the parent SNMP object. */
-QSNMPObject * QSNMPVar::object() const
+/* Returns the parent SNMP module. */
+QSNMPModule * QSNMPVar::module() const
 {
-    return mObject;
+    return mModule;
 }
 
 /* Returns the name of this variable. */
@@ -730,11 +635,11 @@ QSNMPMaxAccess_e QSNMPVar::maxAccess() const
     return mMaxAccess;
 }
 
-/* Returns the base OID of this variable, that is the OID of the
+/* Returns the group OID of this variable, that is the OID of the
  * parent group. */
-const QSNMPOid & QSNMPVar::baseOid() const
+const QSNMPOid & QSNMPVar::groupOid() const
 {
-    return mBaseOid;
+    return mGroupOid;
 }
 
 /* Returns the variable's field identifier under the parent group. */
@@ -743,20 +648,21 @@ quint32 QSNMPVar::fieldId() const
     return mFieldId;
 }
 
-/* Returns the indexes of this variable. This will be .0 for scalars
- * or a list of values for tabular variables. */
+/* Returns the indexes of this variable.
+ * This will be qsnmpScalarIndex (.0).0 for a scalar variable
+ * or a list of values for a tabular variable. */
 const QSNMPOid & QSNMPVar::indexes() const
 {
     return mIndexes;
 }
 
-/* Returns this variable's complete OID (baseOid.fieldId.indexes). */
+/* Returns this variable's complete OID (groupOid.fieldId.indexes). */
 const QSNMPOid & QSNMPVar::oid() const
 {
     return mOid;
 }
 
-/* Returns this variable's complete OID (baseOid.fieldId.indexes) in string format. */
+/* Returns this variable's complete OID (groupOid.fieldId.indexes) in string format. */
 const QString & QSNMPVar::oidString() const
 {
     return mOidString;
@@ -780,18 +686,18 @@ void QSNMPVar::setRegistration(void * registration)
     mRegistration = registration;
 }
 
-/* Returns this variable's value, by calling the snmpGet handler of the parent object. */
+/* Returns this variable's value, by calling the snmpGet handler of the parent module. */
 QVariant QSNMPVar::get() const
 {
-    if(mObject)
-        return mObject->snmpGet(this);
+    if(mModule)
+        return mModule->snmpGet(this);
     return QVariant();
 }
 
-/* Sets this variable's value, by calling the snmpSet handler of the parent object. */
+/* Sets this variable's value, by calling the snmpSet handler of the parent module. */
 bool QSNMPVar::set(const QVariant & v) const
 {
-    if(mObject)
-        return mObject->snmpSet(this, v);
+    if(mModule)
+        return mModule->snmpSet(this, v);
     return false;
 }
