@@ -98,7 +98,6 @@ static int variableHandler(netsnmp_mib_handler * handler, netsnmp_handler_regist
                             netsnmp_agent_request_info * reqinfo, netsnmp_request_info * requests)
 {
     Q_UNUSED(handler)
-    Q_UNUSED(reginfo)
     netsnmp_variable_list * netsnmp_varlist = requests->requestvb;
 
     /* Retrieve context data */
@@ -509,7 +508,7 @@ const QSNMPVarList & QSNMPObject::snmpVarList() const
 }
 
 /* Returns the SNMP variable (allocated under this object) with given name */
-QSNMPVar * QSNMPObject::snmpVar(const QString & name)
+QSNMPVar * QSNMPObject::snmpVar(const QString & name) const
 {
     foreach(QSNMPVar * var, mSnmpVarList)
     {
@@ -520,7 +519,7 @@ QSNMPVar * QSNMPObject::snmpVar(const QString & name)
 }
 
 /* Returns the SNMP variable (allocated under this object) with given field identifier */
-QSNMPVar * QSNMPObject::snmpVar(quint32 fieldId)
+QSNMPVar * QSNMPObject::snmpVar(quint32 fieldId) const
 {
     foreach(QSNMPVar * var, mSnmpVarList)
     {

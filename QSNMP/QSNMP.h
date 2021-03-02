@@ -123,8 +123,8 @@ public:
     QSNMPAgent *                snmpAgent() const;
     const QString &             snmpName() const;
     const QSNMPVarList &        snmpVarList() const;
-    QSNMPVar *                  snmpVar(const QString & name);
-    QSNMPVar *                  snmpVar(quint32 fieldId);
+    QSNMPVar *                  snmpVar(const QString & name) const;
+    QSNMPVar *                  snmpVar(quint32 fieldId) const;
 
     /* Get/Set a variable's value, implemented in the subclass */
     virtual QVariant            snmpGet(const QSNMPVar * var) = 0;
@@ -132,9 +132,12 @@ public:
 
 protected:
     /* Add/Remove variables to/from this object */
-    QSNMPVar *                  snmpAddNotifyVar(const QString & name, QSNMPType_e type, const QSNMPOid & baseOid, quint32 fieldId, const QSNMPOid & indexes = scalarOidIndex);
-    QSNMPVar *                  snmpAddReadOnlyVar(const QString & name, QSNMPType_e type, const QSNMPOid & baseOid, quint32 fieldId, const QSNMPOid & indexes = scalarOidIndex);
-    QSNMPVar *                  snmpAddReadWriteVar(const QString & name, QSNMPType_e type, const QSNMPOid & baseOid, quint32 fieldId, const QSNMPOid & indexes = scalarOidIndex);
+    QSNMPVar *                  snmpAddNotifyVar(const QString & name, QSNMPType_e type,
+                                                 const QSNMPOid & baseOid, quint32 fieldId, const QSNMPOid & indexes = scalarOidIndex);
+    QSNMPVar *                  snmpAddReadOnlyVar(const QString & name, QSNMPType_e type,
+                                                   const QSNMPOid & baseOid, quint32 fieldId, const QSNMPOid & indexes = scalarOidIndex);
+    QSNMPVar *                  snmpAddReadWriteVar(const QString & name, QSNMPType_e type,
+                                                    const QSNMPOid & baseOid, quint32 fieldId, const QSNMPOid & indexes = scalarOidIndex);
     void                        snmpRemoveVar(QSNMPVar * var);
     void                        snmpRemoveVar(const QString & name);
     void                        snmpRemoveVar(quint32 fieldId);
