@@ -510,6 +510,32 @@ const QSNMPVarList & QSNMPModule::snmpVarList() const
     return mSnmpVarList;
 }
 
+/* Returns the first SNMP variable with given name from the list of
+ * SNMP variables allocated in this module.
+ * Returns nullptr if none found. */
+QSNMPVar * QSNMPModule::snmpVar(const QString & name) const
+{
+    foreach(QSNMPVar * var, mSnmpVarList)
+    {
+        if(var->name() == name)
+            return var;
+    }
+    return nullptr;
+}
+
+/* Returns the first SNMP variable with given OID from the list of
+ * SNMP variables allocated in this module.
+ * Returns nullptr if none found. */
+QSNMPVar * QSNMPModule::snmpVar(const QSNMPOid & oid) const
+{
+    foreach(QSNMPVar * var, mSnmpVarList)
+    {
+        if(var->oid() == oid)
+            return var;
+    }
+    return nullptr;
+}
+
 /* Creates a SNMP variable under this module and registers it with the agent.
  * The 'name' argument can be any as desired by the user application, but it is recommended
  * to use the same one as inside the MIB file to ease log parsing.

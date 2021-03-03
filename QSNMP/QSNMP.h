@@ -123,6 +123,8 @@ public:
     QSNMPAgent *                snmpAgent() const;
     const QString &             snmpName() const;
     const QSNMPVarList &        snmpVarList() const;
+    QSNMPVar *                  snmpVar(const QString & name) const;
+    QSNMPVar *                  snmpVar(const QSNMPOid & oid) const;
 
     /* Get/Set a variable's value, implemented in the user-derived class */
     virtual QVariant            snmpGet(const QSNMPVar * var) = 0;
