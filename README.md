@@ -10,7 +10,7 @@ A simple Net-SNMP AgentX sub-agent interface for Qt (C++) applications that impl
   - [ ] Logging: debug, info, error
 - [ ] Example application
   - [x] Main function, SNMP agent creation
-  - [ ] MyModule (simple group) with Read/Write variables
+  - [x] MyModule (simple group) with Read/Write variables
   - [ ] MyModule with Notifications (traps)
   - [ ] MyTableEntry (table group) with indexes and Read/Write variables
   - [ ] Corresponding MIB file

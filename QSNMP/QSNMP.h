@@ -19,7 +19,7 @@
 /* SNMP data types and their Qt counter-part */
 typedef enum
 {
-    QSNMPType_Integer = 0,  /* quint32 */
+    QSNMPType_Integer = 0,  /* qint32 */
     QSNMPType_OctetStr,     /* QString */
     QSNMPType_BitStr,       /* QString */
     QSNMPType_Opaque,       /* QByteArray */
