@@ -6,31 +6,39 @@ MyModule::MyModule(QSNMPAgent * snmpAgent) : QSNMPModule(snmpAgent, "myModule")
     /* Store SNMP agent */
     mSnmpAgent = snmpAgent;
 
+    /* MyModule group OID */
+    mMyModuleOid = QSNMPOid() << 1 << 3 << 6 << 1 << 4 << 1 /* iso.org.dod.internet.private.enterprises */
+                                                        << 12345 /* .example */
+                                                        << 1; /* .myModule */
     /* Initialize dummy values */
     mStartDateTime = QDateTime::currentDateTime();
     mA = 142;
     mB = -100;
 
-    /* MyModule group OID */
-    const QSNMPOid myModuleOid = QSNMPOid() << 1 << 3 << 6 << 1 << 4 << 1 /* iso.org.dod.internet.private.enterprise */
-                                            << 12345 /* .example */
-                                            << 1; /* .myModule */
-
     /* Create SNMP variables */
-    this->snmpCreateVar("moduleUptime", QSNMPType_TimeTicks, QSNMPMaxAccess_ReadOnly, myModuleOid, 1);
-    this->snmpCreateVar("moduleValueA", QSNMPType_Integer, QSNMPMaxAccess_ReadWrite, myModuleOid, 2);
-    this->snmpCreateVar("moduleValueB", QSNMPType_Integer, QSNMPMaxAccess_ReadWrite, myModuleOid, 3);
-    this->snmpCreateVar("moduleValueSum", QSNMPType_Integer, QSNMPMaxAccess_ReadOnly, myModuleOid, 4);
+    this->snmpCreateVar("moduleUptime", QSNMPType_TimeTicks, QSNMPMaxAccess_ReadOnly, mMyModuleOid, 1);
+    this->snmpCreateVar("moduleValueA", QSNMPType_Integer, QSNMPMaxAccess_ReadWrite, mMyModuleOid, 2);
+    this->snmpCreateVar("moduleValueB", QSNMPType_Integer, QSNMPMaxAccess_ReadWrite, mMyModuleOid, 3);
+    this->snmpCreateVar("moduleValueSum", QSNMPType_Integer, QSNMPMaxAccess_ReadOnly, mMyModuleOid, 4);
+
+    /* Send a startup done trap (no variable binding) */
+    mSnmpAgent->sendTrap("moduleStartupDone", mMyModuleOid, 10);
 }
 
 /* MyModule destructor. */
 MyModule::~MyModule()
 {
-    /* Nothing to do, as SNMP variables are automatically freed by QSNMPModule base class destructor */
+    /* Send exit trap, note that here for demonstration purpose we create the variable right before the
+     * trap is sent because this is the only time where we will use it. Also, the NMS cannot purposefully
+     * read that variable because its max-access is 'accessible-for-notify'. */
+    QSNMPVar * var = this->snmpCreateVar("moduleExitMessage", QSNMPType_OctetStr, QSNMPMaxAccess_Notify, mMyModuleOid, 5);
+    mSnmpAgent->sendTrap("moduleExiting", mMyModuleOid, 12, var);
+
+    /* No need to delete SNMP variables here because they are automatically freed by QSNMPModule base class destructor. */
 }
 
 /* Returns the value associated to SNMP variable var (in order to respond to a SNMP GET request). */
-QVariant MyModule::snmpGet(const QSNMPVar * var)
+QVariant MyModule::snmpGetValue(const QSNMPVar * var)
 {
     /* Identify target variable.
      * Note that in this class, we can switch based on the fieldId value only because
@@ -48,6 +56,8 @@ QVariant MyModule::snmpGet(const QSNMPVar * var)
         return QVariant((qint32)this->B());
     case 4: /* moduleValueSum: Integer32 */
         return QVariant((qint32)this->sum());
+    case 5: /* moduleExitMessage: DisplayString */
+        return QVariant(QString("Goodbye!"));
     default:
         break;
     }
@@ -55,7 +65,7 @@ QVariant MyModule::snmpGet(const QSNMPVar * var)
 }
 
 /* Sets the value associated to SNMP variable var (in order to fulfil a SNMP SET request). */
-bool MyModule::snmpSet(const QSNMPVar * var, const QVariant & v)
+bool MyModule::snmpSetValue(const QSNMPVar * var, const QVariant & v)
 {
     /* Identify target variable.
      * Note that in this class, we can switch based on the fieldId value only because
@@ -96,7 +106,19 @@ qint32 MyModule::A() const
 /* Sets the value of A. */
 void MyModule::setA(qint32 val)
 {
-    mA = val;
+    if(mA != val)
+    {
+        /* Set new value. */
+        mA = val;
+
+        /* The value changed, which means the sum has changed.
+         * Send a trap with some variable bindings. */
+        QSNMPVarList varList;
+        varList << this->snmpVar("moduleValueA");
+        varList << this->snmpVar("moduleValueB");
+        varList << this->snmpVar("moduleValueSum");
+        mSnmpAgent->sendTrap("moduleValueSumChanged", mMyModuleOid, 11, varList);
+    }
 }
 
 /* Returns the value of B. */
@@ -108,7 +130,19 @@ qint32 MyModule::B() const
 /* Sets the value of B. */
 void MyModule::setB(qint32 val)
 {
-    mB = val;
+    if(mB != val)
+    {
+        /* Set new value. */
+        mB = val;
+
+        /* The value changed, which means the sum has changed.
+         * Send a trap with some variable bindings. */
+        QSNMPVarList varList;
+        varList << this->snmpVar("moduleValueA");
+        varList << this->snmpVar("moduleValueB");
+        varList << this->snmpVar("moduleValueSum");
+        mSnmpAgent->sendTrap("moduleValueSumChanged", mMyModuleOid, 11, varList);
+    }
 }
 
 /* Returns the sum A+B. */

@@ -15,8 +15,8 @@ public:
     virtual                     ~MyModule();
 
     /* SNMP module get/set variable value implementation */
-    virtual QVariant            snmpGet(const QSNMPVar * var);
-    virtual bool                snmpSet(const QSNMPVar * var, const QVariant & v);
+    virtual QVariant            snmpGetValue(const QSNMPVar * var);
+    virtual bool                snmpSetValue(const QSNMPVar * var, const QVariant & v);
 
     /* Dummy values get/set */
     QDateTime                   startDateTime() const;
@@ -28,6 +28,7 @@ public:
 
 private:
     QSNMPAgent *                mSnmpAgent;
+    QSNMPOid                    mMyModuleOid;
 
     /* Dummy values */
     QDateTime                   mStartDateTime;

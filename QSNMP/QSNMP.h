@@ -85,6 +85,10 @@ public:
     /* Traps */
     bool                        trapsEnabled() const;
     void                        setTrapsEnabled(bool enabled);
+    void                        sendTrap(const QString & name, const QSNMPOid & groupOid,
+                                         quint32 fieldId, QSNMPVar * var = nullptr);
+    void                        sendTrap(const QString & name, const QSNMPOid & groupOid,
+                                         quint32 fieldId, const QSNMPVarList & varList);
 
 private:
     /* Name */
@@ -127,8 +131,8 @@ public:
     QSNMPVar *                  snmpVar(const QSNMPOid & oid) const;
 
     /* Get/Set a variable's value, implemented in the user-derived class */
-    virtual QVariant            snmpGet(const QSNMPVar * var) = 0;
-    virtual bool                snmpSet(const QSNMPVar * var, const QVariant & v) = 0;
+    virtual QVariant            snmpGetValue(const QSNMPVar * var) = 0;
+    virtual bool                snmpSetValue(const QSNMPVar * var, const QVariant & v) = 0;
 
 protected:
     /* Add/Remove variables to/from this module */

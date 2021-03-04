@@ -447,6 +447,150 @@ void QSNMPAgent::setTrapsEnabled(bool enabled)
     mTrapsEnabled = enabled;
 }
 
+/* Generates and sends an SNMP trap to the Net-SNMP master agent.
+ * The 'name' argument can be any as desired by the user application, it is not
+ * related to the MIB.
+ * The 'groupOid' is the OID of the parent group, 'fieldId' is the trap's identifier
+ * under the parent group, so that 'groupOid.fieldId' form the NOTIFICATION-TYPE
+ * identifier.
+ * A variable binding can be added to the trap payload by setting the var argument. */
+void QSNMPAgent::sendTrap(const QString & name, const QSNMPOid & groupOid, quint32 fieldId, QSNMPVar * var)
+{
+    if(var)
+        this->sendTrap(name, groupOid, fieldId, QSNMPVarList() << var);
+    else
+        this->sendTrap(name, groupOid, fieldId, QSNMPVarList());
+}
+
+/* Generates and sends an SNMP trap to the Net-SNMP master agent.
+ * The 'name' argument can be any as desired by the user application, it is not
+ * related to the MIB.
+ * The 'groupOid' is the OID of the parent group, 'fieldId' is the trap's identifier
+ * under the parent group, so that 'groupOid.fieldId' form the NOTIFICATION-TYPE
+ * identifier.
+ * Multiple variable bindings can be added to the trap payload via the varList argument. */
+void QSNMPAgent::sendTrap(const QString & name, const QSNMPOid & groupOid, quint32 fieldId, const QSNMPVarList & varList)
+{
+    /* Return immediately if traps are disabled */
+    if(!mTrapsEnabled)
+        return;
+
+    /* Variables binding */
+    netsnmp_variable_list * snmpVarList = nullptr;
+
+    /* snmpTrapOID.0 */
+    static oid snmpTrapOid[] = { 1, 3, 6, 1, 6, 3, 1, 1, 4, 1, 0 };
+    oid trapOid[32];
+    size_t trapOidLen;
+    convertOidQtToSnmp(QSNMPOid() << groupOid << fieldId, trapOid, &trapOidLen, 32);
+    snmp_varlist_add_variable(&snmpVarList, snmpTrapOid, sizeof(snmpTrapOid)/sizeof(oid),
+                              ASN_OBJECT_ID, trapOid, trapOidLen*sizeof(oid));
+
+    /* Variables bindings */
+    foreach(QSNMPVar * var, varList)
+    {
+        if(var)
+        {
+            /* Variable OID */
+            oid varOid[32];
+            size_t varOidLen;
+            convertOidQtToSnmp(var->oid(), varOid, &varOidLen, 32);
+
+            /* Read value from user application */
+            QVariant v = var->get();
+            switch(var->type())
+            {
+            case QSNMPType_Integer: /* qint32 */
+            {
+                qint32 value = v.value<qint32>();
+                snmp_varlist_add_variable(&snmpVarList, varOid, varOidLen,
+                                          ASN_INTEGER, &value, 4);
+                break;
+            }
+            case QSNMPType_OctetStr: /* QString */
+            {
+                QByteArray byteArray = v.value<QString>().toUtf8();
+                snmp_varlist_add_variable(&snmpVarList, varOid, varOidLen,
+                                          ASN_OCTET_STR, byteArray.constData(), byteArray.size());
+                break;
+            }
+            case QSNMPType_BitStr: /* QString */
+            {
+                QByteArray byteArray = v.value<QString>().toUtf8();
+                snmp_varlist_add_variable(&snmpVarList, varOid, varOidLen,
+                                          ASN_BIT_STR, byteArray.constData(), byteArray.size());
+                break;
+            }
+            case QSNMPType_Opaque: /* QByteArray */
+            {
+                QByteArray byteArray = v.value<QByteArray>();
+                snmp_varlist_add_variable(&snmpVarList, varOid, varOidLen,
+                                          ASN_OPAQUE, byteArray.constData(), byteArray.size());
+                break;
+            }
+            case QSNMPType_ObjectId: /* QSNMPOid */
+            {
+                QSNMPOid qtOid = v.value<QSNMPOid>();
+                oid snmpOid[32];
+                size_t snmpOidLen;
+                convertOidQtToSnmp(qtOid, snmpOid, &snmpOidLen, 32);
+                snmp_varlist_add_variable(&snmpVarList, varOid, varOidLen,
+                                          ASN_OBJECT_ID, snmpOid, snmpOidLen*sizeof(oid));
+                break;
+            }
+            case QSNMPType_TimeTicks: /* quint32 */
+            {
+                quint32 value = v.value<quint32>();
+                snmp_varlist_add_variable(&snmpVarList, varOid, varOidLen,
+                                          ASN_TIMETICKS, &value, 4);
+                break;
+            }
+            case QSNMPType_Gauge: /* quint32 */
+            {
+                quint32 value = v.value<quint32>();
+                snmp_varlist_add_variable(&snmpVarList, varOid, varOidLen,
+                                          ASN_GAUGE, &value, 4);
+                break;
+            }
+            case QSNMPType_Counter: /* quint32 */
+            {
+                quint32 value = v.value<quint32>();
+                snmp_varlist_add_variable(&snmpVarList, varOid, varOidLen,
+                                          ASN_COUNTER, &value, 4);
+                break;
+            }
+            case QSNMPType_IpAddress: /* quint32 */
+            {
+                quint32 value = v.value<quint32>();
+                quint8 ip[4];
+                ip[0] = (value >> 24) & 0xFF;
+                ip[1] = (value >> 16) & 0xFF;
+                ip[2] = (value >> 8) & 0xFF;
+                ip[3] = (value >> 0) & 0xFF;
+                snmp_varlist_add_variable(&snmpVarList, varOid, varOidLen,
+                                          ASN_IPADDRESS, ip, 4);
+                break;
+            }
+            case QSNMPType_Counter64: /* quint64 */
+            {
+                quint64 value = v.value<quint64>();
+                snmp_varlist_add_variable(&snmpVarList, varOid, varOidLen,
+                                          ASN_COUNTER64, &value, 8);
+                break;
+            }
+            case QSNMPType_Null:
+                break;
+            default:
+                break;
+            }
+        }
+    }
+
+    /* Send trap upstream and clean up */
+    send_v2trap(snmpVarList);
+    snmp_free_varbind(snmpVarList);
+}
+
 /* Processes events received by the Net-SNMP library regularly. */
 void QSNMPAgent::processEvents()
 {
@@ -622,10 +766,11 @@ QSNMPVar::QSNMPVar(QSNMPModule * module, const QString & name, QSNMPType_e type,
     mOidString = toString(mOid);
 
     /* Descriptive string */
-    mDescrString = QString("%1%2 [%3] : %4").arg(mName)
-                                            .arg(toString(mIndexes))
-                                            .arg(toString(mMaxAccess))
-                                            .arg(toString(mType));
+    mDescrString = QString("%1::%2%3 [%4] : %5").arg(mModule->snmpName())
+                                                .arg(mName)
+                                                .arg(toString(mIndexes))
+                                                .arg(toString(mMaxAccess))
+                                                .arg(toString(mType));
 
     /* Registration (opaque) */
     mRegistration = nullptr;
@@ -715,15 +860,11 @@ void QSNMPVar::setRegistration(void * registration)
 /* Returns this variable's value, by calling the snmpGet handler of the parent module. */
 QVariant QSNMPVar::get() const
 {
-    if(mModule)
-        return mModule->snmpGet(this);
-    return QVariant();
+    return mModule->snmpGetValue(this);
 }
 
 /* Sets this variable's value, by calling the snmpSet handler of the parent module. */
 bool QSNMPVar::set(const QVariant & v) const
 {
-    if(mModule)
-        return mModule->snmpSet(this, v);
-    return false;
+    return mModule->snmpSetValue(this, v);
 }
