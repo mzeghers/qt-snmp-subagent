@@ -32,7 +32,7 @@ MyModule::~MyModule()
      * trap is sent because this is the only time where we will use it. Also, the NMS cannot purposefully
      * read that variable because its max-access is 'accessible-for-notify'. */
     QSNMPVar * var = this->snmpCreateVar("moduleExitMessage", QSNMPType_OctetStr, QSNMPMaxAccess_Notify, mMyModuleOid, 5);
-    mSnmpAgent->sendTrap("moduleExiting", mMyModuleOid, 12, var);
+    mSnmpAgent->sendTrap("moduleExiting", mMyModuleOid, 11, var);
 
     /* No need to delete SNMP variables here because they are automatically freed by QSNMPModule base class destructor. */
 }
@@ -117,7 +117,7 @@ void MyModule::setA(qint32 val)
         varList << this->snmpVar("moduleValueA");
         varList << this->snmpVar("moduleValueB");
         varList << this->snmpVar("moduleValueSum");
-        mSnmpAgent->sendTrap("moduleValueSumChanged", mMyModuleOid, 11, varList);
+        mSnmpAgent->sendTrap("moduleValueSumChanged", mMyModuleOid, 12, varList);
     }
 }
 
@@ -141,7 +141,7 @@ void MyModule::setB(qint32 val)
         varList << this->snmpVar("moduleValueA");
         varList << this->snmpVar("moduleValueB");
         varList << this->snmpVar("moduleValueSum");
-        mSnmpAgent->sendTrap("moduleValueSumChanged", mMyModuleOid, 11, varList);
+        mSnmpAgent->sendTrap("moduleValueSumChanged", mMyModuleOid, 12, varList);
     }
 }
 

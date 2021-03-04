@@ -1,0 +1,97 @@
+QSNMP-EXAMPLE-MIB DEFINITIONS ::= BEGIN
+
+
+
+--- ----------------------------------
+--- Imports
+--- ----------------------------------
+
+IMPORTS
+	MODULE-IDENTITY, OBJECT-TYPE, enterprises,
+	TimeTicks, Integer32, NOTIFICATION-TYPE      	FROM SNMPv2-SMI
+	DisplayString          				FROM SNMPv2-TC;
+
+
+
+--- ----------------------------------
+--- MIB description
+--- ----------------------------------
+
+example MODULE-IDENTITY
+    LAST-UPDATED "202103040000Z"		-- March 4th, 2021
+    ORGANIZATION "qt-snmp-subagent"
+    CONTACT-INFO "https://github.com/mzeghers/qt-snmp-subagent"
+    DESCRIPTION  "Top-level of the QSNMP example MIB tree."
+    REVISION     "202103040000Z"
+    DESCRIPTION  "Initial revision."
+    ::= { enterprises 12345}
+
+
+
+--- ----------------------------------
+--- MyModule
+--- ----------------------------------
+
+myModule OBJECT IDENTIFIER ::= { example 1 }
+
+
+moduleUptime OBJECT-TYPE
+    SYNTAX      TimeTicks
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "The time (in hundredths of a second) since MyModule
+		 was last started."
+    ::= { myModule 1 }
+
+moduleValueA OBJECT-TYPE
+    SYNTAX  	Integer32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "An integer value."
+    ::= { myModule 2 }
+
+moduleValueB OBJECT-TYPE
+    SYNTAX  	Integer32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION "Another integer value."
+    ::= { myModule 3 }
+
+moduleValueSum OBJECT-TYPE
+    SYNTAX  	Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "The sum of moduleValueA and moduleValueB."
+    ::= { myModule 4 }
+
+moduleExitMessage OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  accessible-for-notify
+    STATUS      current
+    DESCRIPTION "A message associated to the moduleExiting notification."
+    ::= { myModule 5 }
+
+moduleStartupDone NOTIFICATION-TYPE
+    STATUS  current
+    DESCRIPTION "This notification is emitted when MyModule is initialized."
+    ::= { myModule 10 }
+
+moduleExiting NOTIFICATION-TYPE
+    OBJECTS { moduleExitMessage }
+    STATUS  current
+    DESCRIPTION "This notification is emitted when MyModule is deleted.
+		 The variable binding moduleExitMessage is attached."
+    ::= { myModule 11 }
+
+moduleValueSumChanged NOTIFICATION-TYPE
+    OBJECTS { moduleValueA, moduleValueB, moduleValueSum }
+    STATUS  current
+    DESCRIPTION "This notification is emitted when moduleValueSum has changed.
+		 The values of A, B and A+B are provided in the trap payload."
+    ::= { myModule 12 }
+
+
+
+END
+
+
