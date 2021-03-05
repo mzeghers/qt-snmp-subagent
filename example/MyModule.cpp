@@ -3,7 +3,7 @@
 /* Constructs a MyModule object, it implements a QSNMP Module. */
 MyModule::MyModule(QSNMPAgent * snmpAgent) : QSNMPModule(snmpAgent, "myModule")
 {
-    /* Store SNMP agent */
+    /* Store local parameters */
     mSnmpAgent = snmpAgent;
 
     /* MyModule group OID */

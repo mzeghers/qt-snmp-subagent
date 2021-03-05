@@ -10,8 +10,10 @@ LIBS += -lnetsnmp -lnetsnmpagent
 SOURCES += \
     ../QSNMP/QSNMP.cpp \
     MyModule.cpp \
+    MyTableEntry.cpp \
     main.cpp
 
 HEADERS += \
     ../QSNMP/QSNMP.h \
-    MyModule.h
+    MyModule.h \
+    MyTableEntry.h

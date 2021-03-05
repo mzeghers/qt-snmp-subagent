@@ -4,6 +4,7 @@
 #include <signal.h>
 #include "../QSNMP/QSNMP.h"
 #include "MyModule.h"
+#include "MyTableEntry.h"
 
 
 
@@ -58,11 +59,20 @@ int main(int argc, char * argv[])
     /* Create my MIB module, which will instantiate SNMP variables */
     MyModule * myModule = new MyModule(snmpAgent);
 
+    /* Create some MyTableEntry to demonstrate how tables work with QSNMP */
+    QList<MyTableEntry *> myTable;
+    myTable << new MyTableEntry(snmpAgent, 0, 2);
+    myTable << new MyTableEntry(snmpAgent, 1, 3, Green);
+    myTable << new MyTableEntry(snmpAgent, 8, 6, Blue);
+    myTable << new MyTableEntry(snmpAgent, 9, 5, Green);
+    myTable << new MyTableEntry(snmpAgent, 12, 0, Red);
+
     /* Execute application event loop */
     int rc = app.exec();
 
-    /* Delete my MIB module: this will also automatically unregister SNMP variables that
-     * where instantiated within myModule */
+    /* Delete the MIB modules: this will also automatically unregister all SNMP variables that
+     * where instantiated within those */
+    qDeleteAll(myTable);
     delete myModule;
 
     /* Delete SNMP agent */

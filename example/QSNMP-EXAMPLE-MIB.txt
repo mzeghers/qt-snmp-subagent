@@ -138,7 +138,7 @@ myTableEntryColor OBJECT-TYPE
                 	green(1),
                 	blue(2)
             		}
-    MAX-ACCESS  read-only
+    MAX-ACCESS  read-write
     STATUS      current
     DESCRIPTION "The table entry color (yes, this doesn't mean anything, but shows
 		 how enumerated values can be used within QSNMP)."

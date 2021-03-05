@@ -27,6 +27,7 @@ public:
     qint32                      sum() const;
 
 private:
+    /* Local parameters */
     QSNMPAgent *                mSnmpAgent;
     QSNMPOid                    mMyModuleOid;
 

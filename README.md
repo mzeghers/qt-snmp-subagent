@@ -8,12 +8,12 @@ A simple Net-SNMP AgentX sub-agent interface for Qt (C++) applications that impl
   - [x] QSNMPVar (SNMP variable/OBJECT-TYPE)
   - [x] Traps/Notifications
   - [ ] Logging: debug, info, error
-- [ ] Example application
+- [x] Example application
   - [x] Main function, SNMP agent creation
   - [x] MyModule (simple group) with Read/Write variables
   - [x] MyModule with Notifications (traps)
-  - [ ] MyTableEntry (table group) with indexes and Read/Write variables
-  - [ ] Corresponding MIB file
+  - [x] MyTableEntry (table group) with indexes and Read/Write variables
+  - [x] Corresponding MIB file
 - [ ] This README
   - [ ] Detailed presentation of this project
   - [ ] Net-SNMP install HOWTO
