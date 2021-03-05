@@ -458,8 +458,8 @@ void QSNMPAgent::setTrapsEnabled(bool enabled)
 }
 
 /* Generates and sends an SNMP trap to the Net-SNMP master agent.
- * The 'name' argument can be any as desired by the user application, it is not
- * related to the MIB.
+ * The 'name' argument can be any as desired by the user application, but it is recommended
+ * to use the same one as inside the MIB file to ease log parsing.
  * The 'groupOid' is the OID of the parent group, 'fieldId' is the trap's identifier
  * under the parent group, so that 'groupOid.fieldId' form the NOTIFICATION-TYPE
  * identifier.
@@ -473,8 +473,8 @@ void QSNMPAgent::sendTrap(const QString & name, const QSNMPOid & groupOid, quint
 }
 
 /* Generates and sends an SNMP trap to the Net-SNMP master agent.
- * The 'name' argument can be any as desired by the user application, it is not
- * related to the MIB.
+ * The 'name' argument can be any as desired by the user application, but it is recommended
+ * to use the same one as inside the MIB file to ease log parsing.
  * The 'groupOid' is the OID of the parent group, 'fieldId' is the trap's identifier
  * under the parent group, so that 'groupOid.fieldId' form the NOTIFICATION-TYPE
  * identifier.
@@ -631,13 +631,10 @@ void QSNMPAgent::processEvents()
  * Here, a SNMP module is not strictly related to the MIB, but can be seen as
  * a collection of variables, or group, in the MIB syntax. It can represent a
  * group of scalars, or a table entry (group of tabulars), or a combination of
- * both, as required by the user application.
- * The 'snmpName' argument can be any as desired by the user application, it is not
- * related to the MIB. */
-QSNMPModule::QSNMPModule(QSNMPAgent * snmpAgent, const QString & snmpName)
+ * both, as required by the user application. */
+QSNMPModule::QSNMPModule(QSNMPAgent * snmpAgent)
 {
     mSnmpAgent = snmpAgent;
-    mSnmpName = snmpName;
     mSnmpVarList.clear();
 }
 
@@ -651,12 +648,6 @@ QSNMPModule::~QSNMPModule()
 QSNMPAgent * QSNMPModule::snmpAgent() const
 {
     return mSnmpAgent;
-}
-
-/* Returns the name of this module. */
-const QString & QSNMPModule::snmpName() const
-{
-    return mSnmpName;
 }
 
 /* Returns the list of SNMP variables allocated in this module. */
@@ -777,11 +768,10 @@ QSNMPVar::QSNMPVar(QSNMPModule * module, const QString & name, QSNMPType_e type,
     mOidString = toString(mOid);
 
     /* Descriptive string */
-    mDescrString = QString("%1::%2%3 [%4] : %5").arg(mModule->snmpName())
-                                                .arg(mName)
-                                                .arg(toString(mIndexes))
-                                                .arg(toString(mMaxAccess))
-                                                .arg(toString(mType));
+    mDescrString = QString("%1%2 [%3] : %4").arg(mName)
+                                            .arg(toString(mIndexes))
+                                            .arg(toString(mMaxAccess))
+                                            .arg(toString(mType));
 
     /* Registration (opaque) */
     mRegistration = nullptr;

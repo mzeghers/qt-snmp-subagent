@@ -1,8 +1,7 @@
 #include "MyTableEntry.h"
 
 /* Constructs a MyTableEntry object, it implements a QSNMP Module. */
-MyTableEntry::MyTableEntry(QSNMPAgent * snmpAgent, quint32 index1, quint32 index2, Color defaultColor)
-    : QSNMPModule(snmpAgent, QString("entry(%1, %2)").arg(index1).arg(index2))
+MyTableEntry::MyTableEntry(QSNMPAgent * snmpAgent, quint32 index1, quint32 index2, Color defaultColor) : QSNMPModule(snmpAgent)
 {
     /* Store local parameters */
     mSnmpAgent = snmpAgent;

@@ -1,7 +1,7 @@
 #include "MyModule.h"
 
 /* Constructs a MyModule object, it implements a QSNMP Module. */
-MyModule::MyModule(QSNMPAgent * snmpAgent) : QSNMPModule(snmpAgent, "myModule")
+MyModule::MyModule(QSNMPAgent * snmpAgent) : QSNMPModule(snmpAgent)
 {
     /* Store local parameters */
     mSnmpAgent = snmpAgent;

@@ -123,12 +123,11 @@ class QSNMPModule
 {
 
 public:
-                                QSNMPModule(QSNMPAgent * snmpAgent, const QString & snmpName);
+                                QSNMPModule(QSNMPAgent * snmpAgent);
     virtual                     ~QSNMPModule();
 
     /* Getters */
     QSNMPAgent *                snmpAgent() const;
-    const QString &             snmpName() const;
     const QSNMPVarList &        snmpVarList() const;
     QSNMPVar *                  snmpVar(const QString & name) const;
     QSNMPVar *                  snmpVar(const QSNMPOid & oid) const;
@@ -146,7 +145,6 @@ protected:
 
 private:
     QSNMPAgent *                mSnmpAgent;
-    QString                     mSnmpName;
     QSNMPVarList                mSnmpVarList;
 
 };
