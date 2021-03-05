@@ -34,7 +34,6 @@ example MODULE-IDENTITY
 
 myModule OBJECT IDENTIFIER ::= { example 1 }
 
-
 moduleUptime OBJECT-TYPE
     SYNTAX      TimeTicks
     MAX-ACCESS  read-only
@@ -89,6 +88,62 @@ moduleValueSumChanged NOTIFICATION-TYPE
     DESCRIPTION "This notification is emitted when moduleValueSum has changed.
 		 The values of A, B and A+B are provided in the trap payload."
     ::= { myModule 12 }
+
+
+
+--- ----------------------------------
+--- MyTable
+--- ----------------------------------
+
+myTable OBJECT IDENTIFIER ::= { example 2 }
+
+myTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF MyTableEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION "A list of MyTable entries."
+    ::= { example 2 }
+
+myTableEntry OBJECT-TYPE
+    SYNTAX      MyTableEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION "A table entry, indexed by myTableEntryIndex1 and myTableEntryIndex2."
+    INDEX { myTableEntryIndex1, myTableEntryIndex2 }
+    ::= { ftpLinkTable 1 }
+
+MyTableEntry ::= SEQUENCE
+	{
+	myTableEntryIndex1   	Gauge32,
+	myTableEntryIndex2   	Gauge32,
+	myTableEntryColor	INTEGER
+	}
+
+myTableEntryIndex1 OBJECT-TYPE
+    SYNTAX  	Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Table entry first index."
+    ::= { myTableEntry 1 }
+
+myTableEntryIndex2 OBJECT-TYPE
+    SYNTAX  	Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Table entry second index."
+    ::= { myTableEntry 2 }
+
+myTableEntryColor OBJECT-TYPE
+    SYNTAX      INTEGER {
+                	red(0),
+                	green(1),
+                	blue(2)
+            		}
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "The table entry color (yes, this doesn't mean anything, but shows
+		 how enumerated values can be used within QSNMP)."
+    ::= { myTableEntry 3 }
 
 
 
