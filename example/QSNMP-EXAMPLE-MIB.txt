@@ -8,7 +8,8 @@ QSNMP-EXAMPLE-MIB DEFINITIONS ::= BEGIN
 
 IMPORTS
 	MODULE-IDENTITY, OBJECT-TYPE, enterprises,
-	TimeTicks, Integer32, NOTIFICATION-TYPE      	FROM SNMPv2-SMI
+	TimeTicks, Integer32, Gauge32,
+	NOTIFICATION-TYPE 				FROM SNMPv2-SMI
 	DisplayString          				FROM SNMPv2-TC;
 
 
@@ -95,8 +96,6 @@ moduleValueSumChanged NOTIFICATION-TYPE
 --- MyTable
 --- ----------------------------------
 
-myTable OBJECT IDENTIFIER ::= { example 2 }
-
 myTable OBJECT-TYPE
     SYNTAX      SEQUENCE OF MyTableEntry
     MAX-ACCESS  not-accessible
@@ -110,7 +109,7 @@ myTableEntry OBJECT-TYPE
     STATUS      current
     DESCRIPTION "A table entry, indexed by myTableEntryIndex1 and myTableEntryIndex2."
     INDEX { myTableEntryIndex1, myTableEntryIndex2 }
-    ::= { ftpLinkTable 1 }
+    ::= { myTable 1 }
 
 MyTableEntry ::= SEQUENCE
 	{
