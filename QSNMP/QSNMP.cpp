@@ -142,53 +142,52 @@ const QSNMPVarMap & QSNMPAgent::varMap() const
 }
 
 /* Registers a SNMP variable to this agent.
- * Returns an empty string on success, else a non-empty string (indicating the
- * failure reason) on error.
  * This function is called by the QSNMPModule snmpCreateVar function and
- * should typically not be called directly by the user application. */
-QString QSNMPAgent::registerVar(QSNMPVar * var)
+ * should typically not be called directly by the user application.
+ * Returns true on success, or false on failure. */
+bool QSNMPAgent::registerVar(QSNMPVar * var)
 {
-    /* Notify variables are not actually registered within the agent */
-    if(var->maxAccess() == QSNMPMaxAccess_Notify)
-        return QString();
-
     /* Check if already registered */
     if(mVarMap.contains(var->oidString()))
-        return QString("Variable is already registered");
+        return false;
 
-    /* Create handler registration */
-    var->setRegistration(nullptr);
-    QVector<oid> oidVector;
-    foreach(quint32 k, var->oid())
-        oidVector << k;
-    netsnmp_handler_registration * reginfo = netsnmp_create_handler_registration(var->name().toStdString().c_str(),
-                                                                                 variableHandler,
-                                                                                 (const oid *)oidVector.constData(),
-                                                                                 oidVector.size(),
-                                                                                 (var->maxAccess()==QSNMPMaxAccess_ReadWrite)?HANDLER_CAN_RWRITE:HANDLER_CAN_RONLY);
-    if(!reginfo)
-        return QString("Failed to create handler registration");
-
-    /* Our context data */
-    reginfo->my_reg_void = this;
-
-    /* Register instance */
-    int rc = netsnmp_register_instance(reginfo);
-    if(rc == MIB_REGISTRATION_FAILED)
+    /* Notify variables are not actually registered with the Net-SNMP library */
+    if(var->maxAccess() != QSNMPMaxAccess_Notify)
     {
-        netsnmp_handler_registration_free(reginfo);
-        return QString("Handler registration failed");
-    }
-    else if(rc == MIB_DUPLICATE_REGISTRATION)
-    {
-        netsnmp_handler_registration_free(reginfo);
-        return QString("Duplicate registration aborted");
+        /* Create handler registration */
+        var->setRegistration(nullptr);
+        QVector<oid> oidVector;
+        foreach(quint32 k, var->oid())
+            oidVector << k;
+        netsnmp_handler_registration * reginfo = netsnmp_create_handler_registration(var->name().toStdString().c_str(),
+                                                                                     variableHandler,
+                                                                                     (const oid *)oidVector.constData(),
+                                                                                     oidVector.size(),
+                                                                                     (var->maxAccess()==QSNMPMaxAccess_ReadWrite)?HANDLER_CAN_RWRITE:HANDLER_CAN_RONLY);
+        if(!reginfo)
+            return false;
+
+        /* Our context data */
+        reginfo->my_reg_void = this;
+
+        /* Register instance */
+        int rc = netsnmp_register_instance(reginfo);
+        if(rc == MIB_REGISTRATION_FAILED)
+        {
+            netsnmp_handler_registration_free(reginfo);
+            return false;
+        }
+        else if(rc == MIB_DUPLICATE_REGISTRATION)
+        {
+            netsnmp_handler_registration_free(reginfo);
+            return false;
+        }
+        var->setRegistration(reginfo);
     }
 
-    /* Add to map */
-    var->setRegistration(reginfo);
+    /* Done, add to map */
     mVarMap.insert(var->oidString(), var);
-    return QString();
+    return true;
 }
 
 /* Unregisters a SNMP variable from this agent.
@@ -196,17 +195,16 @@ QString QSNMPAgent::registerVar(QSNMPVar * var)
  * should typically not be called directly by the user application. */
 void QSNMPAgent::unregisterVar(QSNMPVar * var)
 {
-    /* Notify variables are not actually registered within the agent */
-    if(var->maxAccess() == QSNMPMaxAccess_Notify)
-        return;
-
-    /* Unregister */
-    if(mVarMap.contains(var->oidString()))
+    /* Notify variables are not actually registered with the Net-SNMP library */
+    if(var->maxAccess() != QSNMPMaxAccess_Notify)
     {
-        /* Unregister variable and remove from map */
-        netsnmp_unregister_handler((netsnmp_handler_registration *)var->registration());
-        var->setRegistration(nullptr);
-        mVarMap.remove(var->oidString());
+        if(mVarMap.contains(var->oidString()))
+        {
+            /* Unregister variable and remove from map */
+            netsnmp_unregister_handler((netsnmp_handler_registration *)var->registration());
+            var->setRegistration(nullptr);
+            mVarMap.remove(var->oidString());
+        }
     }
 }
 
@@ -695,8 +693,7 @@ QSNMPVar * QSNMPModule::snmpCreateVar(const QString & name, QSNMPType_e type, QS
                                          const QSNMPOid & groupOid, quint32 fieldId, const QSNMPOid & indexes)
 {
     QSNMPVar * var = new QSNMPVar(this, name, type, maxAccess, groupOid, fieldId, indexes);
-    QString errStr = mSnmpAgent->registerVar(var);
-    if(!errStr.isEmpty())
+    if(!mSnmpAgent->registerVar(var))
     {
         delete var;
         return nullptr;

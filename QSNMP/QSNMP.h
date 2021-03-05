@@ -79,7 +79,7 @@ public:
 
     /* Variables managed under this agent */
     const QSNMPVarMap &         varMap() const;
-    QString                     registerVar(QSNMPVar * var);
+    bool                        registerVar(QSNMPVar * var);
     void                        unregisterVar(QSNMPVar * var);
 
     /* SNMP agent event processing (Net-SNMP internal) */
