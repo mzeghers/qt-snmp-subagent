@@ -91,19 +91,137 @@ static QSNMPOid convertOidSnmpToQt(oid * snmpOid, size_t snmpOidLen)
 /******************** VARIABLE GET/SET HANDLER ********************/
 /******************************************************************/
 
-/* The main variable GET/SET callback handler, called by the Net-SNMP library on GET/SET messages.
- * Note that here we use the same callback for all variables, so that implementation-specific
- * behavior is determined outside of the QSNMP context. */
+/* Net-SNMP request callback, forward to QSNMPAgent handler. */
 static int variableHandler(netsnmp_mib_handler * handler, netsnmp_handler_registration * reginfo,
                             netsnmp_agent_request_info * reqinfo, netsnmp_request_info * requests)
 {
-    Q_UNUSED(handler)
-    netsnmp_variable_list * netsnmp_varlist = requests->requestvb;
-
-    /* Retrieve context data */
+    /* Call agent handler */
     QSNMPAgent * agent = static_cast<QSNMPAgent*>(reginfo->my_reg_void);
     if(!agent)
         return SNMP_ERR_GENERR;
+    return agent->handler(handler, reginfo, reqinfo, requests);
+}
+
+
+
+/****************************************************/
+/******************** SNMP AGENT ********************/
+/****************************************************/
+
+/* SNMP agent constructor, initializes Net-SNMP library as AgentX sub-agent. */
+QSNMPAgent::QSNMPAgent(const QString & agentName, const QString & agentAddr)
+{
+    /* Initialize member variables */
+    mAgentName = agentName;
+    mVarMap.clear();
+    mTimer.start();
+    mTrapsEnabled = true;
+
+    /* Initialize agentX/SNMP libraries */
+    netsnmp_ds_set_boolean(NETSNMP_DS_APPLICATION_ID, NETSNMP_DS_AGENT_ROLE, 1);
+    if(!mAgentName.isEmpty())
+        netsnmp_ds_set_string(NETSNMP_DS_APPLICATION_ID, NETSNMP_DS_AGENT_X_SOCKET, agentAddr.toStdString().c_str());
+    init_agent(mAgentName.toStdString().c_str());
+    init_snmp(mAgentName.toStdString().c_str());
+
+    /* Initial event processing start */
+    QTimer::singleShot(0, this, SLOT(processEvents()));
+}
+
+/* SNMP agent destructor, shutdowns Net-SNMP library. */
+QSNMPAgent::~QSNMPAgent()
+{
+    snmp_shutdown(mAgentName.toStdString().c_str());
+    shutdown_agent();
+}
+
+/* Returns the map of SNMP variables managed by this agent. */
+const QSNMPVarMap & QSNMPAgent::varMap() const
+{
+    return mVarMap;
+}
+
+/* Registers a SNMP variable to this agent.
+ * Returns an empty string on success, else a non-empty string (indicating the
+ * failure reason) on error.
+ * This function is called by the QSNMPModule snmpCreateVar function and
+ * should typically not be called directly by the user application. */
+QString QSNMPAgent::registerVar(QSNMPVar * var)
+{
+    /* Notify variables are not actually registered within the agent */
+    if(var->maxAccess() == QSNMPMaxAccess_Notify)
+        return QString();
+
+    /* Check if already registered */
+    if(mVarMap.contains(var->oidString()))
+        return QString("Variable is already registered");
+
+    /* Create handler registration */
+    var->setRegistration(nullptr);
+    QVector<oid> oidVector;
+    foreach(quint32 k, var->oid())
+        oidVector << k;
+    netsnmp_handler_registration * reginfo = netsnmp_create_handler_registration(var->name().toStdString().c_str(),
+                                                                                 variableHandler,
+                                                                                 (const oid *)oidVector.constData(),
+                                                                                 oidVector.size(),
+                                                                                 (var->maxAccess()==QSNMPMaxAccess_ReadWrite)?HANDLER_CAN_RWRITE:HANDLER_CAN_RONLY);
+    if(!reginfo)
+        return QString("Failed to create handler registration");
+
+    /* Our context data */
+    reginfo->my_reg_void = this;
+
+    /* Register instance */
+    int rc = netsnmp_register_instance(reginfo);
+    if(rc == MIB_REGISTRATION_FAILED)
+    {
+        netsnmp_handler_registration_free(reginfo);
+        return QString("Handler registration failed");
+    }
+    else if(rc == MIB_DUPLICATE_REGISTRATION)
+    {
+        netsnmp_handler_registration_free(reginfo);
+        return QString("Duplicate registration aborted");
+    }
+
+    /* Add to map */
+    var->setRegistration(reginfo);
+    mVarMap.insert(var->oidString(), var);
+    return QString();
+}
+
+/* Unregisters a SNMP variable from this agent.
+ * This function is called by the QSNMPModule snmpDeleteVar function and
+ * should typically not be called directly by the user application. */
+void QSNMPAgent::unregisterVar(QSNMPVar * var)
+{
+    /* Notify variables are not actually registered within the agent */
+    if(var->maxAccess() == QSNMPMaxAccess_Notify)
+        return;
+
+    /* Unregister */
+    if(mVarMap.contains(var->oidString()))
+    {
+        /* Unregister variable and remove from map */
+        netsnmp_unregister_handler((netsnmp_handler_registration *)var->registration());
+        var->setRegistration(nullptr);
+        mVarMap.remove(var->oidString());
+    }
+}
+
+/* The main variable GET/SET callback handler, called by the Net-SNMP library on GET/SET messages.
+ * Note that here we use the same callback for all variables, so that implementation-specific
+ * behavior is determined outside of the QSNMP context. */
+int QSNMPAgent::handler(void * _handler, void * _reginfo, void * _reqinfo, void * _requests)
+{
+    Q_UNUSED(_handler)
+    Q_UNUSED(_reginfo)
+    netsnmp_agent_request_info * reqinfo = (netsnmp_agent_request_info * )_reqinfo;
+    netsnmp_request_info * requests = (netsnmp_request_info * )_requests;
+
+    /* Variables list */
+    netsnmp_variable_list * netsnmp_varlist = requests->requestvb;
 
     /* Action */
     if((reqinfo->mode == MODE_GET) || (reqinfo->mode == MODE_GETNEXT))
@@ -113,7 +231,7 @@ static int variableHandler(netsnmp_mib_handler * handler, netsnmp_handler_regist
         {
             /* Get the corresponding variable from agent */
             QSNMPOid qtOid = convertOidSnmpToQt(netsnmp_varlist->name, netsnmp_varlist->name_length);
-            QSNMPVar * var = agent->varMap().value(toString(qtOid), nullptr);
+            QSNMPVar * var = mVarMap.value(toString(qtOid), nullptr);
             if(!var)
                 return SNMP_ERR_GENERR;
 
@@ -213,7 +331,7 @@ static int variableHandler(netsnmp_mib_handler * handler, netsnmp_handler_regist
 
         /* Get the corresponding variable from agent */
         QSNMPOid qtOid = convertOidSnmpToQt(netsnmp_varlist->name, netsnmp_varlist->name_length);
-        QSNMPVar * var = agent->varMap().value(toString(qtOid), nullptr);
+        QSNMPVar * var = mVarMap.value(toString(qtOid), nullptr);
         if(!var)
             return SNMP_ERR_GENERR;
 
@@ -325,114 +443,6 @@ static int variableHandler(netsnmp_mib_handler * handler, netsnmp_handler_regist
 
     /* Done */
     return SNMP_ERR_NOERROR;
-}
-
-
-
-/****************************************************/
-/******************** SNMP AGENT ********************/
-/****************************************************/
-
-/* SNMP agent constructor, initializes Net-SNMP library as AgentX sub-agent. */
-QSNMPAgent::QSNMPAgent(const QString & agentName, const QString & agentAddr)
-{
-    /* Initialize member variables */
-    mAgentName = agentName;
-    mVarMap.clear();
-    mTrapsEnabled = true;
-    mTimer.start();
-
-    /* Initialize agentX/SNMP libraries */
-    netsnmp_ds_set_boolean(NETSNMP_DS_APPLICATION_ID, NETSNMP_DS_AGENT_ROLE, 1);
-    if(!mAgentName.isEmpty())
-        netsnmp_ds_set_string(NETSNMP_DS_APPLICATION_ID, NETSNMP_DS_AGENT_X_SOCKET, agentAddr.toStdString().c_str());
-    init_agent(mAgentName.toStdString().c_str());
-    init_snmp(mAgentName.toStdString().c_str());
-
-    /* Initial event processing start */
-    QTimer::singleShot(0, this, SLOT(processEvents()));
-}
-
-/* SNMP agent destructor, shutdowns Net-SNMP library. */
-QSNMPAgent::~QSNMPAgent()
-{
-    snmp_shutdown(mAgentName.toStdString().c_str());
-    shutdown_agent();
-}
-
-/* Returns the map of SNMP variables managed by this agent. */
-const QSNMPVarMap & QSNMPAgent::varMap() const
-{
-    return mVarMap;
-}
-
-/* Registers a SNMP variable to this agent.
- * Returns an empty string on success, else a non-empty string (indicating the
- * failure reason) on error.
- * This function is called by the QSNMPModule snmpCreateVar function and
- * should typically not be called directly by the user application. */
-QString QSNMPAgent::registerVar(QSNMPVar * var)
-{
-    /* Notify variables are not actually registered within the agent */
-    if(var->maxAccess() == QSNMPMaxAccess_Notify)
-        return QString();
-
-    /* Check if already registered */
-    if(mVarMap.contains(var->oidString()))
-        return QString("Variable is already registered");
-
-    /* Create handler registration */
-    var->setRegistration(nullptr);
-    QVector<oid> oidVector;
-    foreach(quint32 k, var->oid())
-        oidVector << k;
-    netsnmp_handler_registration * reginfo = netsnmp_create_handler_registration(var->name().toStdString().c_str(),
-                                                                                 variableHandler,
-                                                                                 (const oid *)oidVector.constData(),
-                                                                                 oidVector.size(),
-                                                                                 (var->maxAccess()==QSNMPMaxAccess_ReadWrite)?HANDLER_CAN_RWRITE:HANDLER_CAN_RONLY);
-    if(!reginfo)
-        return QString("Failed to create handler registration");
-
-    /* Our context data */
-    reginfo->my_reg_void = this;
-
-    /* Register instance */
-    int rc = netsnmp_register_instance(reginfo);
-    if(rc == MIB_REGISTRATION_FAILED)
-    {
-        netsnmp_handler_registration_free(reginfo);
-        return QString("Handler registration failed");
-    }
-    else if(rc == MIB_DUPLICATE_REGISTRATION)
-    {
-        netsnmp_handler_registration_free(reginfo);
-        return QString("Duplicate registration aborted");
-    }
-
-    /* Add to map */
-    var->setRegistration(reginfo);
-    mVarMap.insert(var->oidString(), var);
-    return QString();
-}
-
-/* Unregisters a SNMP variable from this agent.
- * This function is called by the QSNMPModule snmpDeleteVar function and
- * should typically not be called directly by the user application. */
-void QSNMPAgent::unregisterVar(QSNMPVar * var)
-{
-    /* Notify variables are not actually registered within the agent */
-    if(var->maxAccess() == QSNMPMaxAccess_Notify)
-        return;
-
-    /* Unregister */
-    if(mVarMap.contains(var->oidString()))
-    {
-        /* Unregister variable and remove from map */
-        netsnmp_unregister_handler((netsnmp_handler_registration *)var->registration());
-        var->setRegistration(nullptr);
-        mVarMap.remove(var->oidString());
-    }
 }
 
 /* Returns true if SNMP traps are enabled. */
@@ -590,6 +600,7 @@ void QSNMPAgent::sendTrap(const QString & name, const QSNMPOid & groupOid, quint
     send_v2trap(snmpVarList);
     snmp_free_varbind(snmpVarList);
 }
+
 
 /* Processes events received by the Net-SNMP library regularly. */
 void QSNMPAgent::processEvents()
@@ -857,13 +868,13 @@ void QSNMPVar::setRegistration(void * registration)
     mRegistration = registration;
 }
 
-/* Returns this variable's value, by calling the snmpGet handler of the parent module. */
+/* Returns this variable's value, by calling the snmpGetValue handler of the parent module. */
 QVariant QSNMPVar::get() const
 {
     return mModule->snmpGetValue(this);
 }
 
-/* Sets this variable's value, by calling the snmpSet handler of the parent module. */
+/* Sets this variable's value, by calling the snmpSetValue handler of the parent module. */
 bool QSNMPVar::set(const QVariant & v) const
 {
     return mModule->snmpSetValue(this, v);

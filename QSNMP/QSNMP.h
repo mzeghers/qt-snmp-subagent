@@ -82,6 +82,9 @@ public:
     QString                     registerVar(QSNMPVar * var);
     void                        unregisterVar(QSNMPVar * var);
 
+    /* SNMP agent event processing (Net-SNMP internal) */
+    int                         handler(void * handler, void * reginfo, void * reqinfo, void * requests);
+
     /* Traps */
     bool                        trapsEnabled() const;
     void                        setTrapsEnabled(bool enabled);
@@ -97,11 +100,11 @@ private:
     /* Variables */
     QSNMPVarMap                 mVarMap;
 
-    /* Traps */
-    bool                        mTrapsEnabled;
-
     /* SNMP agent event processing */
     QElapsedTimer               mTimer;
+
+    /* Traps */
+    bool                        mTrapsEnabled;
 
 private slots:
     /* SNMP agent event processing */
