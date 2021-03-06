@@ -6,7 +6,8 @@
 
 
 /* An enumerated color */
-typedef enum {
+typedef enum
+{
     Red = 0,
     Green = 1,
     Blue = 2

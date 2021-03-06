@@ -47,6 +47,19 @@ QString toString(QSNMPMaxAccess_e snmpMaxAccess);
 QSNMPMaxAccess_e toSNMPMaxAccess(const QString & str);
 Q_DECLARE_METATYPE(QSNMPMaxAccess_e)
 
+/* SNMP log types */
+typedef enum
+{
+    QSNMPLogType_GET = 0,           // debug ?
+    QSNMPLogType_SET,               // info ?
+    QSNMPLogType_TRAP,              // info ?
+    QSNMPLogType_RegisterOK,        // debug ?
+    QSNMPLogType_RegisterFail,      // error ?
+    QSNMPLogType_UnregisterOK,      // debug ?
+    QSNMPLogType_UnregisterFail,    // error ?
+} QSNMPLogType_e;
+Q_DECLARE_METATYPE(QSNMPLogType_e)
+
 /* SNMP OID stored as QVector */
 typedef QVector<quint32> QSNMPOid;
 QString toString(const QSNMPOid & oid);
@@ -109,6 +122,10 @@ private:
 private slots:
     /* SNMP agent event processing */
     void                        processEvents();
+
+signals:
+    /* Logging */
+    void                        newLog(QSNMPLogType_e logType, const QString & msg);
 
 };
 
@@ -174,7 +191,7 @@ public:
     const QSNMPOid &            indexes() const;
     const QSNMPOid &            oid() const;
     const QString &             oidString() const;
-    const QString &             descrString() const;
+    const QString &             fullName() const;
 
     /* Registration (opaque) */
     void *                      registration() const;
@@ -195,7 +212,7 @@ private:
     QSNMPOid                    mIndexes;
     QSNMPOid                    mOid;
     QString                     mOidString;
-    QString                     mDescrString;
+    QString                     mFullName;
 
     /* Registration (opaque) */
     void *                      mRegistration;

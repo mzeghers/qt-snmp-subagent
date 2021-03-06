@@ -1,6 +1,7 @@
 #include <QCoreApplication>
 #include <QCommandLineParser>
 #include <QCommandLineOption>
+#include <QDebug>
 #include <signal.h>
 #include "../QSNMP/QSNMP.h"
 #include "MyModule.h"
@@ -55,6 +56,13 @@ int main(int argc, char * argv[])
     QString agentName = parser.value(agentNameOption);
     QString agentAddr = parser.value(agentAddrOption);
     QSNMPAgent * snmpAgent = new QSNMPAgent(agentName, agentAddr);
+
+    /* Handle logs from SNMP agent */
+    snmpAgent->connect(snmpAgent, &QSNMPAgent::newLog, [=](QSNMPLogType_e logType, const QString & msg)
+    {
+        Q_UNUSED(logType)
+        qDebug() << msg;
+    });
 
     /* Create my MIB module, which will instantiate SNMP variables */
     MyModule * myModule = new MyModule(snmpAgent);

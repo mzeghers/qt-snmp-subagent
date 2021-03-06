@@ -13,7 +13,7 @@
 /* QSNMPType_e string conversions */
 static const QMap<QSNMPType_e, QString> initSNMPTypeMap()
 {
-    qRegisterMetaType<QSNMPType_e>("SNMPType_e");
+    qRegisterMetaType<QSNMPType_e>("QSNMPType_e");
     QMap<QSNMPType_e, QString> map;
     map.insert(QSNMPType_Integer, "INTEGER");
     map.insert(QSNMPType_OctetStr, "OCTET-STRING");
@@ -40,7 +40,7 @@ QSNMPType_e toSNMPType(const QString & str)
 /* QSNMPMaxAccess_e string conversions */
 static const QMap<QSNMPMaxAccess_e, QString> initSNMPMaxAccessMap()
 {
-    qRegisterMetaType<QSNMPMaxAccess_e>("SNMPMaxAccess_e");
+    qRegisterMetaType<QSNMPMaxAccess_e>("QSNMPMaxAccess_e");
     QMap<QSNMPMaxAccess_e, QString> map;
     map.insert(QSNMPMaxAccess_Notify, "NOTIFY");
     map.insert(QSNMPMaxAccess_ReadOnly, "RO");
@@ -149,7 +149,11 @@ bool QSNMPAgent::registerVar(QSNMPVar * var)
 {
     /* Check if already registered */
     if(mVarMap.contains(var->oidString()))
+    {
+        emit this->newLog(QSNMPLogType_RegisterFail,
+                          QString("Could not register SNMP variable %1: already registered").arg(var->fullName()));
         return false;
+    }
 
     /* Notify variables are not actually registered with the Net-SNMP library */
     if(var->maxAccess() != QSNMPMaxAccess_Notify)
@@ -165,7 +169,11 @@ bool QSNMPAgent::registerVar(QSNMPVar * var)
                                                                                      oidVector.size(),
                                                                                      (var->maxAccess()==QSNMPMaxAccess_ReadWrite)?HANDLER_CAN_RWRITE:HANDLER_CAN_RONLY);
         if(!reginfo)
+        {
+            emit this->newLog(QSNMPLogType_RegisterFail,
+                              QString("Could not register SNMP variable %1: handler creation failed").arg(var->fullName()));
             return false;
+        }
 
         /* Our context data */
         reginfo->my_reg_void = this;
@@ -175,11 +183,15 @@ bool QSNMPAgent::registerVar(QSNMPVar * var)
         if(rc == MIB_REGISTRATION_FAILED)
         {
             netsnmp_handler_registration_free(reginfo);
+            emit this->newLog(QSNMPLogType_RegisterFail,
+                              QString("Could not register SNMP variable %1: handler registration failed").arg(var->fullName()));
             return false;
         }
         else if(rc == MIB_DUPLICATE_REGISTRATION)
         {
             netsnmp_handler_registration_free(reginfo);
+            emit this->newLog(QSNMPLogType_RegisterFail,
+                              QString("Could not register SNMP variable %1: duplicate handler registration").arg(var->fullName()));
             return false;
         }
         var->setRegistration(reginfo);
@@ -187,6 +199,8 @@ bool QSNMPAgent::registerVar(QSNMPVar * var)
 
     /* Done, add to map */
     mVarMap.insert(var->oidString(), var);
+    emit this->newLog(QSNMPLogType_RegisterOK,
+                      QString("Registered SNMP variable %1").arg(var->fullName()));
     return true;
 }
 
@@ -195,10 +209,12 @@ bool QSNMPAgent::registerVar(QSNMPVar * var)
  * should typically not be called directly by the user application. */
 void QSNMPAgent::unregisterVar(QSNMPVar * var)
 {
-    /* Notify variables are not actually registered with the Net-SNMP library */
-    if(var->maxAccess() != QSNMPMaxAccess_Notify)
+    if(mVarMap.contains(var->oidString()))
     {
-        if(mVarMap.contains(var->oidString()))
+        /* Notify variables are not actually registered with the Net-SNMP library */
+        emit this->newLog(QSNMPLogType_UnregisterOK,
+                          QString("Unregistered SNMP variable %1").arg(var->fullName()));
+        if(var->maxAccess() != QSNMPMaxAccess_Notify)
         {
             /* Unregister variable and remove from map */
             netsnmp_unregister_handler((netsnmp_handler_registration *)var->registration());
@@ -206,6 +222,9 @@ void QSNMPAgent::unregisterVar(QSNMPVar * var)
             mVarMap.remove(var->oidString());
         }
     }
+    else
+        emit this->newLog(QSNMPLogType_UnregisterFail,
+                          QString("Could not unregister SNMP variable %1: not registered").arg(var->fullName()));
 }
 
 /* The main variable GET/SET callback handler, called by the Net-SNMP library on GET/SET messages.
@@ -239,6 +258,11 @@ int QSNMPAgent::handler(void * _handler, void * _reginfo, void * _reqinfo, void 
 
             /* Read value from user application */
             QVariant v = var->get();
+            emit this->newLog(QSNMPLogType_GET,
+                              QString("SNMP-GET: %1 [%2] : %4 = %5").arg(var->fullName())
+                                                                    .arg(toString(var->maxAccess()))
+                                                                    .arg(toString(var->type()))
+                                                                    .arg(v.toString()));
 
             /* Convert from Qt to SNMP data */
             switch(var->type())
@@ -432,6 +456,11 @@ int QSNMPAgent::handler(void * _handler, void * _reginfo, void * _reqinfo, void 
         /* Write value to user application */
         if(validType)
         {
+            emit this->newLog(QSNMPLogType_SET,
+                              QString("SNMP-SET: %1 [%2] : %4 = %5").arg(var->fullName())
+                                                                    .arg(toString(var->maxAccess()))
+                                                                    .arg(toString(var->type()))
+                                                                    .arg(v.toString()));
             if(!var->set(v))
                 netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_BADVALUE);
         }
@@ -494,6 +523,10 @@ void QSNMPAgent::sendTrap(const QString & name, const QSNMPOid & groupOid, quint
     snmp_varlist_add_variable(&snmpVarList, snmpTrapOid, sizeof(snmpTrapOid)/sizeof(oid),
                               ASN_OBJECT_ID, trapOid, trapOidLen*sizeof(oid));
 
+    /* Log */
+    emit this->newLog(QSNMPLogType_TRAP,
+                      QString("SNMP-TRAP: %1").arg(name));
+
     /* Variables bindings */
     foreach(QSNMPVar * var, varList)
     {
@@ -506,6 +539,13 @@ void QSNMPAgent::sendTrap(const QString & name, const QSNMPOid & groupOid, quint
 
             /* Read value from user application */
             QVariant v = var->get();
+            emit this->newLog(QSNMPLogType_TRAP,
+                              QString("           => %1 [%2] : %4 = %5").arg(var->fullName())
+                                                                        .arg(toString(var->maxAccess()))
+                                                                        .arg(toString(var->type()))
+                                                                        .arg(v.toString()));
+
+            /* Convert from Qt to SNMP data */
             switch(var->type())
             {
             case QSNMPType_Integer: /* qint32 */
@@ -763,12 +803,7 @@ QSNMPVar::QSNMPVar(QSNMPModule * module, const QString & name, QSNMPType_e type,
     mIndexes = indexes;
     mOid << mGroupOid << mFieldId << mIndexes;
     mOidString = toString(mOid);
-
-    /* Descriptive string */
-    mDescrString = QString("%1%2 [%3] : %4").arg(mName)
-                                            .arg(toString(mIndexes))
-                                            .arg(toString(mMaxAccess))
-                                            .arg(toString(mType));
+    mFullName = QString("%1%2").arg(mName).arg(toString(mIndexes));
 
     /* Registration (opaque) */
     mRegistration = nullptr;
@@ -837,10 +872,10 @@ const QString & QSNMPVar::oidString() const
     return mOidString;
 }
 
-/* Returns a descriptive string for this variable. */
-const QString & QSNMPVar::descrString() const
+/* Returns the full name (name.indexes) for this variable. */
+const QString & QSNMPVar::fullName() const
 {
-    return mDescrString;
+    return mFullName;
 }
 
 /* Gets the opaque, internal, Net-SNMP registration structure. */

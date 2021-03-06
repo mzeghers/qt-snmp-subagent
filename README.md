@@ -2,12 +2,12 @@
 A simple Net-SNMP AgentX sub-agent interface for Qt (C++) applications that implement a MIB module.
 
 ### :warning: Work In Progress :warning:
-- [ ] QSNMP header/source implementation
+- [x] QSNMP header/source implementation
   - [x] QSNMPAgent and Net-SNMP callback handler
   - [x] QSNMPModule (SNMP module abstract class)
   - [x] QSNMPVar (SNMP variable/OBJECT-TYPE)
   - [x] Traps/Notifications
-  - [ ] Logging: debug, info, error
+  - [x] Logging: debug, info, error
 - [x] Example application
   - [x] Main function, SNMP agent creation
   - [x] MyModule (simple group) with Read/Write variables
