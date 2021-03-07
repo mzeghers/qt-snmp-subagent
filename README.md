@@ -1,7 +1,9 @@
 # qt-snmp-subagent
 A simple Net-SNMP AgentX sub-agent interface for Qt (C++) applications that implement a MIB module.
 
-### Installing the Net-SNMP software suite
+
+
+## Installing the Net-SNMP software suite
 
 The qt-snmp-subagent interface (QSNMP) uses the Net-SNMP agent library API. In this regards, the Net-SNMP software suite needs to be installed on the host computer.
 This section provides a short description on how to build and install the Net-SNMP suite from source code. The source code can be downloaded from the [Net-SNMP website](http://www.net-snmp.org/). I recommend downloading the latest version (`net-snmp-5.9.tar.gz` at the time of writing this notice), then extract the source code using the following terminal commands.
@@ -21,6 +23,17 @@ At this point, most SNMP applications (`snmpd`, `snmptrapd`, `snmpget`, `snmpset
 
 
 
+## Integrate and build QSNMP into the user's application
+
+Integrating QSNMP into your Qt project is straightforward, simply copy the `QSNMP.h` and `QSNMP.cpp` files into your project's directory, then edit your qmake `.pro` project file to link the Net-SNMP libraries and reference QSNMP files:
+``` qmake
+LIBS += -lnetsnmp -lnetsnmpagent
+SOURCES += QSNMP.cpp 
+HEADERS += QSNMP.h
+```
+Then in your source code, `#include QSNMP.h` wherever you need it.
+
+
 ### :warning: Work In Progress :warning:
 - [x] QSNMP header/source implementation
   - [x] QSNMPAgent and Net-SNMP callback handler
@@ -37,7 +50,7 @@ At this point, most SNMP applications (`snmpd`, `snmptrapd`, `snmpget`, `snmpset
 - [ ] This README
   - [ ] Detailed presentation of this project
   - [x] Net-SNMP install HOWTO
-  - [ ] How-to integrate and build QSNMP into the user's application
+  - [x] How-to integrate and build QSNMP into the user's application
   - [ ] Code description, HOWTO use QSNMP classes
   - [ ] Detailed description of Example application
     - [ ] Code walkthrough
