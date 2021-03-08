@@ -5,14 +5,15 @@ A simple Net-SNMP AgentX sub-agent interface for Qt (C++) applications that impl
 
 ## Detailed description
 
-The qt-snmp-subagent (QSNMP) eases the implementation of a SNMP sub-agent in Qt-based C++ applications, in order to support your own MIBs. The whole source code is provided as a a single C++ header `QSNMP.h` and source `QSNMP.cpp` file, for easy integration directly within the application.<br><br>
+The qt-snmp-subagent (QSNMP) eases the implementation of a SNMP sub-agent in Qt-based C++ applications, in order to support your own MIBs. The whole source code is provided as a a single C++ header `QSNMP.h` and source `QSNMP.cpp` file, for easy integration directly within the application.<br>
+
 In essence, QSNMP encapsulates the Net-SNMP library's sub-agent API for exchanging SNMP get, set and notifications messages with the SNMP master agent `snmpd`, using AgentX protocol. The Net-SNMP master agent (for which the configuration and documentation is out of scope of QSNMP) will handle actual transactions with the Network Management Station (NMS), including access control, notification forwarding, SNMP version translation, and more...
 
-<p align="center">
-  <img src="img/qsnmp.png">
-</p>
+![QSNMP diagram](img/qsnmp.png)
 
-:warning: TODO
+QSNMP is designed so that it requires very few lines of code to be useful. For common applications, you can expect a complete implementation that support SNMP GET/GETNEXT/SET/NOTIFICATIONS, dynamic scalar and/or tabular SNMP variables (OIDs), and logging, by using as little as 4 or 5 lines of code per OID. Moreover, the resulting code will be particularly relatable to your MIB file, so that you can focus more on handling the OID's actual (implementation-specific) values, rather than how to handle the MIB tree registration (QSNMP will do that for you).<br>
+
+:point_right: An important note: QSNMP does not currently support multi-variable SET operations.
 
 
 
