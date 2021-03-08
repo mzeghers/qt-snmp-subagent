@@ -5,13 +5,16 @@ A simple Net-SNMP AgentX sub-agent interface for Qt (C++) applications that impl
 
 ## Detailed description
 
+The qt-snmp-subagent (QSNMP) eases the implementation of a SNMP sub-agent in Qt-based C++ applications, in order to support your own MIBs. The whole source code is provided as a a single C++ header (QSNMP.h) and source (QSNMP.cpp) file, for easy integration directly within the application.<br><br>
+In essence, QSNMP encapsulates the Net-SNMP library's sub-agent API for exchanging SNMP get, set and notifications messages with the SNMP master agent, using AgentX protocol. The Net-SNMP master agent (for which the configuration and documentation is out of scope of QSNMP) will handle actual transactions with the Network Management Station (NMS), including access control, notification forwarding, SNMP version translation, and more...
+
 :warning: TODO
 
 
 
 ## Installing the Net-SNMP software suite
 
-The qt-snmp-subagent interface (QSNMP) uses the Net-SNMP agent library API. In this regards, the Net-SNMP software suite needs to be installed on the host computer.
+The qt-snmp-subagent interface uses the Net-SNMP agent library API. In this regards, the Net-SNMP software suite needs to be installed on the host computer.
 This section provides a short description on how to build and install the Net-SNMP suite from source code. The source code can be downloaded from the [Net-SNMP website](http://www.net-snmp.org/). I recommend downloading the latest version (`net-snmp-5.9.tar.gz` at the time of writing this notice), then extract the source code using the following terminal commands.
 ``` bash
 tar -xzvf net-snmp-5.9.tar.gz
