@@ -11,7 +11,7 @@ In essence, QSNMP encapsulates the Net-SNMP library's sub-agent API for exchangi
 
 ![QSNMP diagram](img/qsnmp.png)
 
-QSNMP is designed so that it requires very few lines of code to be useful. For common applications, you can expect a complete implementation that support SNMP GET/GETNEXT/SET/NOTIFICATIONS, dynamic scalar and/or tabular SNMP variables (OIDs), and logging, by using as little as 4 or 5 lines of code per OID. Moreover, the resulting code will be particularly relatable to your MIB file, so that you can focus more on handling the OID's actual (implementation-specific) values, rather than how to handle the MIB tree registration (QSNMP will do that for you).<br>
+QSNMP is designed so that it requires very few lines of code to be useful. For common applications, you can expect a complete implementation that support SNMP GET/GETNEXT/SET/NOTIFICATIONS, dynamic scalar and/or tabular SNMP variables (OIDs), and logging, by using as little as 4 or 5 lines of code per OID. Moreover, the resulting code will be particularly relatable to your MIB file, so that you can focus more on handling the OID's actual (implementation-specific) data, rather than how to handle the MIB tree registration (QSNMP will do that for you).<br>
 
 :point_right: An important note: QSNMP does not currently support multi-variable SET operations.
 
