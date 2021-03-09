@@ -120,9 +120,69 @@ mSnmpAgent->sendTrap("moduleValueSumChanged", mMyModuleOid, 12, varList);
 
 #### The `MyTableEntry` object
 
-TODO
+`MyTableEntry.cpp` also codes a derived class of `QSNMPModule`. It shows how a module can represent a SNMP table entry.
 
+In the constructor, we set the module's group OID `myTableEntryOid`, that is the OID of the parent object as defined in the MIB file (here *.myTableEntry*).
 
+``` c++
+/* MyTableEntry group OID and indexes (for tabular variables) */
+QSNMPOid myTableEntryOid;
+myTableEntryOid << 1 << 3 << 6 << 1 << 4 << 1 /* iso.org.dod.internet.private.enterprises */
+					<< 12345 /* .example */
+					<< 2 /* .myTable */
+					<< 1; /* .myTableEntry */
+```
+
+Similarly to `MyModule`, we create the SNMP variables according to our MIB file (type, max access...). An important distinction however is that here all SNMP variables under *.myTableEntry* will be tabular variables. This means that the `indexes` parameter of the `snmpCreateVar()` method is set accordingly to the indexing objects declared in the MIB (here `myTableEntryIndex1` and `myTableEntryIndex2`). That way, the variables are declared as tabular where their OID are ended by `.mIndex1.mIndex2` instead of `.0`. Note that having SNMP variables that refer to the indexes is not actually mandatory but good practice.
+
+``` c++
+QSNMPOid indexes  = QSNMPOid() << mIndex1 << mIndex2;
+mVar1 = this->snmpCreateVar("myTableEntryIndex1", QSNMPType_Gauge, QSNMPMaxAccess_ReadOnly, myTableEntryOid, 1, indexes);
+mVar2 = this->snmpCreateVar("myTableEntryIndex2", QSNMPType_Gauge, QSNMPMaxAccess_ReadOnly, myTableEntryOid, 2, indexes);
+mVar3 = this->snmpCreateVar("myTableEntryColor", QSNMPType_Integer, QSNMPMaxAccess_ReadWrite, myTableEntryOid, 3, indexes);
+```
+
+The code also shows how to use enumerated integer values through the `myTableEntryColor(3)` SNMP variable.
+
+``` c++
+/* Returns the value associated to SNMP variable var (in order to respond to a SNMP GET request). */
+QVariant MyTableEntry::snmpGetValue(const QSNMPVar * var)
+{
+    /* Switch based on target variable. */
+    if(var == mVar1)
+        return QVariant((quint32)mIndex1);
+    else if(var == mVar2)
+        return QVariant((quint32)mIndex2);
+    else if(var == mVar3)
+        return QVariant((qint32)mColor);
+    return QVariant();
+}
+
+/* Sets the value associated to SNMP variable var (in order to fulfil a SNMP SET request). */
+bool MyTableEntry::snmpSetValue(const QSNMPVar * var, const QVariant & v)
+{
+    /* Only "myTableEntryColor" has write-access. */
+    if(var == mVar3) // Same as: if(var->name() == "myTableEntryColor")
+    {
+        switch(v.value<qint32>())
+        {
+        case Red:
+            mColor = Red;
+            return true;
+        case Green:
+            mColor = Green;
+            return true;
+        case Blue:
+            mColor = Blue;
+            return true;
+        default:
+            /* Bad value ! Will return false. */
+            break;
+        }
+    }
+    return false;
+}
+```
 
 
 
