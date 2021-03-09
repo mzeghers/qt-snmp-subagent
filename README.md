@@ -17,6 +17,12 @@ QSNMP is designed so that it requires very few lines of code to be useful. For c
 
 
 
+## Example application
+
+An example usage of QSNMP is provided in the [example](example) directory.
+
+
+
 ## Installing the Net-SNMP software suite
 
 The qt-snmp-subagent interface uses the Net-SNMP agent library API. In this regards, the Net-SNMP software suite needs to be installed on the host computer.
@@ -123,10 +129,4 @@ QSNMP provides a simple logging mechanism, where log messages are emitted by the
 signals:
 void newLog(QSNMPLogType_e logType, const QString & msg);
 ```
-
-
-
-## Example application
-
-An example usage of QSNMP is provided in the [example](example) directory.
 
