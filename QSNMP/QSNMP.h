@@ -149,8 +149,11 @@ public:
     QSNMPVar *                  snmpVar(const QString & name) const;
     QSNMPVar *                  snmpVar(const QSNMPOid & oid) const;
 
-    /* Get/Set a variable's value, implemented in the user-derived class */
+    /* Get variable's value, implemented in the user-derived class. */
     virtual QVariant            snmpGetValue(const QSNMPVar * var) = 0;
+
+    /* Get variable's value, implemented in the user-derived class. Return true on
+     * success, or false to respond with a bad value error. */
     virtual bool                snmpSetValue(const QSNMPVar * var, const QVariant & v) = 0;
 
 protected:

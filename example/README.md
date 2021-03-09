@@ -2,7 +2,7 @@
 
 This example Qt application is provided for a better understanding of how to use QSNMP.
 
-What this application does is implement a [dummy MIB module](QSNMP-EXAMPLE-MIB.txt), for which the subtree can be simplified as follow:
+What this application does is implement a [dummy MIB module](net-snmp/mibs/QSNMP-EXAMPLE-MIB.txt), for which the subtree can be simplified as follow:
 
 ```
 .iso(1).org(3).dod(6).internet(1).private(4).enterprises(1)
