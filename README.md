@@ -128,5 +128,5 @@ void newLog(QSNMPLogType_e logType, const QString & msg);
 
 ## Example application
 
-An example usage of QSNMP is provided in this repository, see the `example/README.md` notice for more information.
+An example usage of QSNMP is provided in the [example](example) directory.
 
