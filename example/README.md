@@ -185,11 +185,128 @@ bool MyTableEntry::snmpSetValue(const QSNMPVar * var, const QVariant & v)
 ```
 
 
+## Testing the application
 
+👉 Starting Net-SNMP daemons
 
-:warning: Work in progress :warning:
+In order to test the application, we first need to launch the SNMP master agent. This is done by executing the `snmpd` daemon. How to configure `snmpd` is out of scope of this notice, but a [snmpd.conf](net-snmp/snmpd.conf) file is provided in this repository. In this file we configure as AgentX master, set access control, and traps are forwarded locally.
+``` bash
+cd <qt-snmp-subagent-dir>/example/net-snmp/
+sudo snmpd -f -Lo -C -c snmpd.conf
+```
 
-  - [ ] Code walkthrough
-  - [ ] Configure/Execute Net-SNMP master agent
-  - [ ] Net-SNMP commands to check functionality
-  - [ ] Trap-viewer
+If you don't want to type out the complete OIDs, you better copy the [QSNMP-EXAMPLE-MIB.txt](net-snmp/mibs/QSNMP-EXAMPLE-MIB.txt) MIB file into Net-SNMP search path ( usually `/usr/local/share/snmp/mibs/`). This way Net-SNMP applications will automatically convert OID to/from human readable names.
+
+We also want to monitor traps, this can be done by using `snmptrapd` daemon. An example [snmptrapd.conf](net-snmp/snmptrapd.conf) file is also provided that formats the text output on the console. In a new terminal launch the trap-receiver daemon:
+``` bash
+cd <qt-snmp-subagent-dir>/example/net-snmp/
+sudo snmptrapd -f -Lo -m ALL -C -c snmptrapd.conf
+```
+
+At this time, you should have two terminals open: one with `snmpd` running, and the other with `snmptrapd`.
+
+👉 Launching the example application
+
+Build the example source code by the method of your choice (e.g. QtCreator build), and you can simply execute the application as root in yet another terminal: `sudo ./example`. The application should print out a connection to the Net-SNMP master agent, variables being registered, and also a `moduleStartupDone` trap being emitted. Those logs (shown below), are output by the `QSNMPAgent::newLog()` signal:
+```
+NET-SNMP version 5.9 AgentX subagent connected
+"Registered SNMP variable moduleUptime.0"
+"Registered SNMP variable moduleValueA.0"
+"Registered SNMP variable moduleValueB.0"
+"Registered SNMP variable moduleValueSum.0"
+"SNMP-TRAP: moduleStartupDone"
+"Registered SNMP variable myTableEntryIndex1.0.2"
+(...)
+```
+
+The `snmptrapd` daemon should have caught that notification, with the following lines appearing in its terminal:
+```
+DISMAN-EVENT-MIB::sysUpTimeInstance = Timeticks: (245682) 0:40:56.82
+ SNMPv2-MIB::snmpTrapOID.0 = OID: QSNMP-EXAMPLE-MIB::moduleStartupDone
+```
+
+👉 Getting and setting values
+
+Now that the application is running, we can read and write values via Net-SNMP applications `snmpget`, `snmpwalk`, `snmpset`, `snmptable`...
+
+For instance:
+``` bash
+$ snmpget -v 2c -c public localhost -m ALL moduleUptime.0
+QSNMP-EXAMPLE-MIB::moduleUptime.0 = Timeticks: (53179) 0:08:51.79
+
+$ snmpget -v 2c -c public localhost -m ALL moduleValueSum.0
+QSNMP-EXAMPLE-MIB::moduleValueSum.0 = INTEGER: 42
+
+$ snmpget -v 2c -c public localhost -m ALL myTableEntryColor.1.3
+QSNMP-EXAMPLE-MIB::myTableEntryColor.1.3 = INTEGER: green(1)
+```
+
+Or getting the complete `myTable`:
+``` bash
+$ snmptable -v 2c -c public -m ALL -Cb localhost myTable
+SNMP table: QSNMP-EXAMPLE-MIB::myTable
+
+ Index1 Index2 Color
+      0      2   red
+      1      3 green
+      8      6  blue
+      9      5 green
+     12      0   red
+
+```
+
+Let's set a new value to `moduleValueA.0`:
+``` bash
+$ snmpset -v 2c -c private -m ALL localhost moduleValueA.0 i 30
+QSNMP-EXAMPLE-MIB::moduleValueA.0 = INTEGER: 30
+```
+
+The example application updates the new value accordingly, and the code generates a trap indicating that the value sum has changed (with variables bindings). A shown in the application's console:
+```
+"SNMP-SET: moduleValueA.0 [RW] : INTEGER = 30"
+"SNMP-TRAP: moduleValueSumChanged"
+"           => moduleValueA.0 [RW] : INTEGER = 30"
+"           => moduleValueB.0 [RW] : INTEGER = -100"
+"           => moduleValueSum.0 [RO] : INTEGER = -70"
+
+```
+
+The `snmptrapd` daemon catches that notification and displays it all:
+``` 
+DISMAN-EVENT-MIB::sysUpTimeInstance = Timeticks: (337306) 0:56:13.06
+ SNMPv2-MIB::snmpTrapOID.0 = OID: QSNMP-EXAMPLE-MIB::moduleValueSumChanged
+ QSNMP-EXAMPLE-MIB::moduleValueA.0 = INTEGER: 30
+ QSNMP-EXAMPLE-MIB::moduleValueB.0 = INTEGER: -100
+ QSNMP-EXAMPLE-MIB::moduleValueSum.0 = INTEGER: -70
+```
+
+If we try to walk the whole MIB:
+```
+$ snmpwalk -v 2c -c public localhost -m ALL example
+QSNMP-EXAMPLE-MIB::moduleUptime.0 = Timeticks: (118739) 0:19:47.39
+QSNMP-EXAMPLE-MIB::moduleValueA.0 = INTEGER: 30
+QSNMP-EXAMPLE-MIB::moduleValueB.0 = INTEGER: -100
+QSNMP-EXAMPLE-MIB::moduleValueSum.0 = INTEGER: -70
+QSNMP-EXAMPLE-MIB::myTableEntryIndex1.0.2 = Gauge32: 0
+QSNMP-EXAMPLE-MIB::myTableEntryIndex1.1.3 = Gauge32: 1
+QSNMP-EXAMPLE-MIB::myTableEntryIndex1.8.6 = Gauge32: 8
+QSNMP-EXAMPLE-MIB::myTableEntryIndex1.9.5 = Gauge32: 9
+QSNMP-EXAMPLE-MIB::myTableEntryIndex1.12.0 = Gauge32: 12
+QSNMP-EXAMPLE-MIB::myTableEntryIndex2.0.2 = Gauge32: 2
+QSNMP-EXAMPLE-MIB::myTableEntryIndex2.1.3 = Gauge32: 3
+QSNMP-EXAMPLE-MIB::myTableEntryIndex2.8.6 = Gauge32: 6
+QSNMP-EXAMPLE-MIB::myTableEntryIndex2.9.5 = Gauge32: 5
+QSNMP-EXAMPLE-MIB::myTableEntryIndex2.12.0 = Gauge32: 0
+QSNMP-EXAMPLE-MIB::myTableEntryColor.0.2 = INTEGER: red(0)
+QSNMP-EXAMPLE-MIB::myTableEntryColor.1.3 = INTEGER: green(1)
+QSNMP-EXAMPLE-MIB::myTableEntryColor.8.6 = INTEGER: blue(2)
+QSNMP-EXAMPLE-MIB::myTableEntryColor.9.5 = INTEGER: green(1)
+QSNMP-EXAMPLE-MIB::myTableEntryColor.12.0 = INTEGER: red(0)
+```
+
+And finally, if we exit the example application (`Ctrl+C`), `snmptrapd` should catch the exit message:
+```
+DISMAN-EVENT-MIB::sysUpTimeInstance = Timeticks: (374855) 1:02:28.55
+ SNMPv2-MIB::snmpTrapOID.0 = OID: QSNMP-EXAMPLE-MIB::moduleExiting
+ QSNMP-EXAMPLE-MIB::moduleExitMessage.0 = STRING: Goodbye!
+```
